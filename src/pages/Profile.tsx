@@ -1,4 +1,5 @@
-import { Navigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Navigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { User, Scale, Target, Activity, LogOut, ChevronRight, Crown, TrendingDown, TrendingUp, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,8 +10,10 @@ import { useProfile } from '@/hooks/useProfile';
 import { useWeightLogs } from '@/hooks/useWeightLogs';
 import { formatCalories } from '@/lib/calories';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Link } from 'react-router-dom';
-import { format } from 'date-fns';
+import { EditGoalSheet } from '@/components/profile/EditGoalSheet';
+import { EditActivitySheet } from '@/components/profile/EditActivitySheet';
+import { EditPersonalInfoSheet } from '@/components/profile/EditPersonalInfoSheet';
+import { toast } from 'sonner';
 
 const goalLabels = {
   lose_weight: { label: 'Lose Weight', icon: TrendingDown, color: 'text-accent' },
@@ -28,8 +31,12 @@ const activityLabels = {
 
 export default function Profile() {
   const { user, signOut } = useAuth();
-  const { profile, isLoading } = useProfile();
-  const { logs: weightLogs } = useWeightLogs();
+  const { profile, isLoading, updateProfile, isUpdating } = useProfile();
+  const { logs: weightLogs, addWeightLog } = useWeightLogs();
+
+  const [goalSheetOpen, setGoalSheetOpen] = useState(false);
+  const [activitySheetOpen, setActivitySheetOpen] = useState(false);
+  const [personalInfoSheetOpen, setPersonalInfoSheetOpen] = useState(false);
 
   if (!user) {
     return <Navigate to="/auth" replace />;
@@ -46,6 +53,83 @@ export default function Profile() {
 
   const handleSignOut = async () => {
     await signOut();
+  };
+
+  const handleGoalSave = (goal: 'lose_weight' | 'maintain' | 'gain_muscle') => {
+    updateProfile(
+      { 
+        goal,
+        // Include existing values to recalculate calories
+        age: profile?.age || undefined,
+        gender: profile?.gender || undefined,
+        height_cm: profile?.height_cm || undefined,
+        weight_kg: profile?.weight_kg || undefined,
+        activity_level: profile?.activity_level || undefined,
+      },
+      {
+        onSuccess: () => {
+          setGoalSheetOpen(false);
+          toast.success('Goal updated successfully');
+        },
+        onError: () => {
+          toast.error('Failed to update goal');
+        },
+      }
+    );
+  };
+
+  const handleActivitySave = (activity_level: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active') => {
+    updateProfile(
+      { 
+        activity_level,
+        age: profile?.age || undefined,
+        gender: profile?.gender || undefined,
+        height_cm: profile?.height_cm || undefined,
+        weight_kg: profile?.weight_kg || undefined,
+        goal: profile?.goal || undefined,
+      },
+      {
+        onSuccess: () => {
+          setActivitySheetOpen(false);
+          toast.success('Activity level updated successfully');
+        },
+        onError: () => {
+          toast.error('Failed to update activity level');
+        },
+      }
+    );
+  };
+
+  const handlePersonalInfoSave = (info: {
+    name?: string | null;
+    age?: number | null;
+    gender?: 'male' | 'female' | 'other' | null;
+    height_cm?: number | null;
+    weight_kg?: number | null;
+  }) => {
+    const updateData = {
+      name: info.name ?? profile?.name,
+      age: info.age ?? profile?.age,
+      gender: info.gender ?? profile?.gender,
+      height_cm: info.height_cm ?? profile?.height_cm,
+      weight_kg: info.weight_kg ?? profile?.weight_kg,
+      activity_level: profile?.activity_level,
+      goal: profile?.goal,
+    };
+
+    updateProfile(updateData as any, {
+      onSuccess: () => {
+        // Also add weight log if weight changed
+        if (info.weight_kg && info.weight_kg !== profile?.weight_kg) {
+          addWeightLog(info.weight_kg);
+        }
+        setPersonalInfoSheetOpen(false);
+        toast.success('Personal info updated successfully');
+      },
+      onError: () => {
+        toast.error('Failed to update personal info');
+      },
+    });
   };
 
   return (
@@ -154,12 +238,15 @@ export default function Profile() {
           
           <Card>
             <CardContent className="divide-y divide-border">
-              <div className="flex items-center justify-between py-3">
+              <button
+                onClick={() => setGoalSheetOpen(true)}
+                className="w-full flex items-center justify-between py-3 hover:bg-muted/50 transition-colors -mx-1 px-1 rounded-lg"
+              >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center">
                     <GoalIcon className={`h-5 w-5 ${goalInfo?.color || 'text-muted-foreground'}`} />
                   </div>
-                  <div>
+                  <div className="text-left">
                     <div className="text-sm font-medium text-foreground">Goal</div>
                     <div className="text-xs text-muted-foreground">
                       {goalInfo?.label || 'Not set'}
@@ -167,14 +254,17 @@ export default function Profile() {
                   </div>
                 </div>
                 <ChevronRight className="h-5 w-5 text-muted-foreground" />
-              </div>
+              </button>
 
-              <div className="flex items-center justify-between py-3">
+              <button
+                onClick={() => setActivitySheetOpen(true)}
+                className="w-full flex items-center justify-between py-3 hover:bg-muted/50 transition-colors -mx-1 px-1 rounded-lg"
+              >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center">
                     <Activity className="h-5 w-5 text-primary" />
                   </div>
-                  <div>
+                  <div className="text-left">
                     <div className="text-sm font-medium text-foreground">Activity Level</div>
                     <div className="text-xs text-muted-foreground">
                       {profile?.activity_level 
@@ -184,14 +274,17 @@ export default function Profile() {
                   </div>
                 </div>
                 <ChevronRight className="h-5 w-5 text-muted-foreground" />
-              </div>
+              </button>
 
-              <div className="flex items-center justify-between py-3">
+              <button
+                onClick={() => setPersonalInfoSheetOpen(true)}
+                className="w-full flex items-center justify-between py-3 hover:bg-muted/50 transition-colors -mx-1 px-1 rounded-lg"
+              >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center">
                     <User className="h-5 w-5 text-muted-foreground" />
                   </div>
-                  <div>
+                  <div className="text-left">
                     <div className="text-sm font-medium text-foreground">Personal Info</div>
                     <div className="text-xs text-muted-foreground">
                       {profile?.age ? `${profile.age} years` : 'Not set'}
@@ -200,7 +293,7 @@ export default function Profile() {
                   </div>
                 </div>
                 <ChevronRight className="h-5 w-5 text-muted-foreground" />
-              </div>
+              </button>
             </CardContent>
           </Card>
         </motion.div>
@@ -227,6 +320,37 @@ export default function Profile() {
           <p>⚠️ Calorie estimates are approximate and not medical advice.</p>
         </div>
       </div>
+
+      {/* Edit Sheets */}
+      <EditGoalSheet
+        open={goalSheetOpen}
+        onOpenChange={setGoalSheetOpen}
+        currentGoal={profile?.goal || null}
+        onSave={handleGoalSave}
+        isLoading={isUpdating}
+      />
+
+      <EditActivitySheet
+        open={activitySheetOpen}
+        onOpenChange={setActivitySheetOpen}
+        currentLevel={profile?.activity_level || null}
+        onSave={handleActivitySave}
+        isLoading={isUpdating}
+      />
+
+      <EditPersonalInfoSheet
+        open={personalInfoSheetOpen}
+        onOpenChange={setPersonalInfoSheetOpen}
+        currentInfo={{
+          name: profile?.name || null,
+          age: profile?.age || null,
+          gender: profile?.gender || null,
+          height_cm: profile?.height_cm || null,
+          weight_kg: profile?.weight_kg || null,
+        }}
+        onSave={handlePersonalInfoSave}
+        isLoading={isUpdating}
+      />
     </AppLayout>
   );
 }

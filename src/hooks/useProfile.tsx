@@ -56,6 +56,7 @@ export function useProfile() {
     isLoading,
     error,
     updateProfile: updateProfile.mutate,
+    updateProfileAsync: updateProfile.mutateAsync,
     isUpdating: updateProfile.isPending,
   };
 }
