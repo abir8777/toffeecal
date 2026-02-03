@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, Type, ArrowLeft, Loader2, Check, Sparkles, Upload } from 'lucide-react';
+import { Camera, Type, ArrowLeft, Loader2, Check, Sparkles, Upload, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -29,7 +29,8 @@ export default function LogFood() {
   const [mealType, setMealType] = useState<MealType>('lunch');
   const [analysisResult, setAnalysisResult] = useState<FoodAnalysisResult | null>(null);
   
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const { analyzeFood, isAnalyzing, error } = useFoodAnalysis();
   const { addFoodLog, isAdding } = useFoodLogs();
   const { toast } = useToast();
@@ -253,28 +254,55 @@ export default function LogFood() {
               exit={{ opacity: 0, y: -10 }}
               className="space-y-6"
             >
+              {/* Camera input - with capture for camera */}
               <input
-                ref={fileInputRef}
+                ref={cameraInputRef}
                 type="file"
                 accept="image/*"
                 capture="environment"
                 onChange={handleImageSelect}
                 className="hidden"
               />
+              
+              {/* Gallery input - without capture for file picker */}
+              <input
+                ref={galleryInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageSelect}
+                className="hidden"
+              />
 
               {!imagePreview ? (
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full aspect-square rounded-2xl border-2 border-dashed border-muted hover:border-primary transition-all flex flex-col items-center justify-center gap-4 bg-card"
-                >
-                  <div className="w-20 h-20 rounded-full gradient-primary flex items-center justify-center">
-                    <Camera className="h-10 w-10 text-primary-foreground" />
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <button
+                      onClick={() => cameraInputRef.current?.click()}
+                      className="p-6 rounded-2xl bg-card border-2 border-muted hover:border-primary transition-all text-center group"
+                    >
+                      <div className="w-16 h-16 mx-auto rounded-2xl gradient-primary flex items-center justify-center mb-3 group-hover:shadow-glow transition-shadow">
+                        <Camera className="h-8 w-8 text-primary-foreground" />
+                      </div>
+                      <div className="font-semibold text-foreground">Take Photo</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Open camera
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => galleryInputRef.current?.click()}
+                      className="p-6 rounded-2xl bg-card border-2 border-muted hover:border-primary transition-all text-center group"
+                    >
+                      <div className="w-16 h-16 mx-auto rounded-2xl gradient-accent flex items-center justify-center mb-3 group-hover:shadow-glow transition-shadow">
+                        <Image className="h-8 w-8 text-accent-foreground" />
+                      </div>
+                      <div className="font-semibold text-foreground">Gallery</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Choose from photos
+                      </div>
+                    </button>
                   </div>
-                  <div className="text-center">
-                    <div className="font-semibold text-foreground">Tap to take photo</div>
-                    <div className="text-sm text-muted-foreground">or upload from gallery</div>
-                  </div>
-                </button>
+                </div>
               ) : (
                 <div className="space-y-4">
                   <div className="relative rounded-2xl overflow-hidden">
@@ -283,12 +311,22 @@ export default function LogFood() {
                       alt="Food preview"
                       className="w-full aspect-square object-cover"
                     />
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="absolute bottom-4 right-4 p-3 rounded-full bg-card/90 backdrop-blur-sm"
-                    >
-                      <Upload className="h-5 w-5 text-foreground" />
-                    </button>
+                    <div className="absolute bottom-4 right-4 flex gap-2">
+                      <button
+                        onClick={() => cameraInputRef.current?.click()}
+                        className="p-3 rounded-full bg-card/90 backdrop-blur-sm"
+                        title="Take new photo"
+                      >
+                        <Camera className="h-5 w-5 text-foreground" />
+                      </button>
+                      <button
+                        onClick={() => galleryInputRef.current?.click()}
+                        className="p-3 rounded-full bg-card/90 backdrop-blur-sm"
+                        title="Choose from gallery"
+                      >
+                        <Image className="h-5 w-5 text-foreground" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
