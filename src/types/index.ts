@@ -9,6 +9,8 @@ export interface Profile {
   activity_level: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active' | null;
   goal: 'lose_weight' | 'maintain' | 'gain_muscle' | null;
   daily_calorie_target: number | null;
+  daily_water_goal_ml: number | null;
+  avatar_url: string | null;
   is_premium: boolean;
   onboarding_completed: boolean;
   created_at: string;

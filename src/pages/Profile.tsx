@@ -13,6 +13,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { EditGoalSheet } from '@/components/profile/EditGoalSheet';
 import { EditActivitySheet } from '@/components/profile/EditActivitySheet';
 import { EditPersonalInfoSheet } from '@/components/profile/EditPersonalInfoSheet';
+import { WeightHistoryChart } from '@/components/profile/WeightHistoryChart';
+import { WaterIntakeCard } from '@/components/profile/WaterIntakeCard';
+import { ProfilePictureUpload } from '@/components/profile/ProfilePictureUpload';
+import { DeleteAccountDialog } from '@/components/profile/DeleteAccountDialog';
 import { toast } from 'sonner';
 
 const goalLabels = {
@@ -170,9 +174,16 @@ export default function Profile() {
                 </div>
               ) : (
                 <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-full gradient-primary flex items-center justify-center">
-                    <User className="h-8 w-8 text-primary-foreground" />
-                  </div>
+                  <ProfilePictureUpload
+                    currentAvatarUrl={profile?.avatar_url}
+                    userName={profile?.name}
+                    onUploadSuccess={(url) => {
+                      updateProfile({ avatar_url: url } as any, {
+                        onSuccess: () => {},
+                        onError: () => toast.error('Failed to save profile picture'),
+                      });
+                    }}
+                  />
                   <div className="flex-1">
                     <h2 className="text-xl font-bold text-foreground">
                       {profile?.name || 'User'}
@@ -225,6 +236,27 @@ export default function Profile() {
               <div className="text-xs text-muted-foreground">Daily Goal</div>
             </CardContent>
           </Card>
+        </motion.div>
+
+        {/* Water Intake */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+        >
+          <WaterIntakeCard 
+            weightKg={profile?.weight_kg} 
+            dailyGoal={profile?.daily_water_goal_ml}
+          />
+        </motion.div>
+
+        {/* Weight History Chart */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <WeightHistoryChart logs={weightLogs} isLoading={isLoading} />
         </motion.div>
 
         {/* Profile Details */}
@@ -298,11 +330,12 @@ export default function Profile() {
           </Card>
         </motion.div>
 
-        {/* Sign Out */}
+        {/* Actions */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
+          transition={{ delay: 0.5 }}
+          className="space-y-2"
         >
           <Button
             variant="outline"
@@ -312,6 +345,8 @@ export default function Profile() {
             <LogOut className="mr-2 h-5 w-5" />
             Sign Out
           </Button>
+          
+          <DeleteAccountDialog />
         </motion.div>
 
         {/* App Info */}
