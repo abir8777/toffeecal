@@ -69,8 +69,10 @@ export type Database = {
         Row: {
           activity_level: string | null
           age: number | null
+          avatar_url: string | null
           created_at: string
           daily_calorie_target: number | null
+          daily_water_goal_ml: number | null
           gender: string | null
           goal: string | null
           height_cm: number | null
@@ -85,8 +87,10 @@ export type Database = {
         Insert: {
           activity_level?: string | null
           age?: number | null
+          avatar_url?: string | null
           created_at?: string
           daily_calorie_target?: number | null
+          daily_water_goal_ml?: number | null
           gender?: string | null
           goal?: string | null
           height_cm?: number | null
@@ -101,8 +105,10 @@ export type Database = {
         Update: {
           activity_level?: string | null
           age?: number | null
+          avatar_url?: string | null
           created_at?: string
           daily_calorie_target?: number | null
+          daily_water_goal_ml?: number | null
           gender?: string | null
           goal?: string | null
           height_cm?: number | null
@@ -113,6 +119,30 @@ export type Database = {
           updated_at?: string
           user_id?: string
           weight_kg?: number | null
+        }
+        Relationships: []
+      }
+      water_intake: {
+        Row: {
+          amount_ml: number
+          created_at: string
+          id: string
+          logged_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_ml: number
+          created_at?: string
+          id?: string
+          logged_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_ml?: number
+          created_at?: string
+          id?: string
+          logged_at?: string
+          user_id?: string
         }
         Relationships: []
       }
