@@ -11,6 +11,7 @@ import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import LogFood from "./pages/LogFood";
+import Coach from "./pages/Coach";
 import History from "./pages/History";
 import Profile from "./pages/Profile";
 import Premium from "./pages/Premium";
@@ -67,6 +68,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <History />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/coach"
+        element={
+          <ProtectedRoute>
+            <Coach />
           </ProtectedRoute>
         }
       />
