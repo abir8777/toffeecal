@@ -8,17 +8,20 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { CircularProgress } from '@/components/ui/CircularProgress';
 import { MacroBar } from '@/components/ui/MacroBar';
 import { FoodLogCard } from '@/components/food/FoodLogCard';
+import { DailyTipCard } from '@/components/dashboard/DailyTipCard';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useFoodLogs } from '@/hooks/useFoodLogs';
 import { getProgressPercentage, getRemainingCalories, calculateMacroTargets, formatCalories } from '@/lib/calories';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useDailyTip } from '@/hooks/useDailyTip';
 
 export default function Dashboard() {
   const { user } = useAuth();
   const { profile, isLoading: profileLoading } = useProfile();
   const { dailySummary, logs, isLoading: logsLoading, deleteFoodLog } = useFoodLogs();
+  const { tip, isLoading: tipLoading, refresh: refreshTip } = useDailyTip();
 
   if (!user) {
     return <Navigate to="/auth" replace />;
@@ -59,6 +62,15 @@ export default function Dashboard() {
               Premium
             </Button>
           </Link>
+        </motion.div>
+
+        {/* Daily Motivational Tip */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+        >
+          <DailyTipCard tip={tip} isLoading={tipLoading} onRefresh={refreshTip} />
         </motion.div>
 
         {/* Calorie Progress Card */}
