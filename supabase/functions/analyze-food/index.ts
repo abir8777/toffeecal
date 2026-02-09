@@ -2,20 +2,82 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit,
+  timeoutMs = 30000
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    return res;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  retries = 2,
+  timeoutMs = 30000
+): Promise<Response> {
+  let lastError: Error | null = null;
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const res = await fetchWithTimeout(url, options, timeoutMs);
+      if (res.status === 429 && i < retries) {
+        console.warn(`Rate limited, retrying (${i + 1}/${retries})...`);
+        await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
+        continue;
+      }
+      return res;
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      if (err instanceof DOMException && err.name === "AbortError") {
+        console.error(`Request timed out after ${timeoutMs}ms (attempt ${i + 1})`);
+      } else {
+        console.error(`Fetch error (attempt ${i + 1}):`, lastError.message);
+      }
+      if (i < retries) {
+        await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
+      }
+    }
+  }
+  throw lastError || new Error("All retries failed");
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const { text, image } = await req.json();
+    const body = await req.json();
+    const { text, image } = body;
+
+    console.info("=== analyze-food request ===");
+    console.info("Has text:", !!text, text ? `(${text.length} chars)` : "");
+    console.info("Has image:", !!image, image ? `(${image.length} chars / ~${Math.round(image.length * 0.75 / 1024)}KB)` : "");
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    
     if (!LOVABLE_API_KEY) {
+      console.error("LOVABLE_API_KEY is not configured");
       throw new Error("LOVABLE_API_KEY is not configured");
+    }
+
+    // Validate image size (max ~4MB base64 ≈ 3MB file)
+    if (image && image.length > 4 * 1024 * 1024) {
+      console.error("Image too large:", image.length, "chars");
+      return new Response(
+        JSON.stringify({ error: "Image is too large. Please use an image under 3MB." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const systemPrompt = `You are a nutritionist AI assistant specialized in food calorie estimation. You analyze food items and provide accurate nutritional information.
@@ -41,7 +103,7 @@ You MUST respond with ONLY valid JSON in this exact format:
 
 Do not include any text before or after the JSON. Only output the JSON object.`;
 
-    let messages: any[] = [
+    const messages: any[] = [
       { role: "system", content: systemPrompt },
     ];
 
@@ -65,25 +127,40 @@ Do not include any text before or after the JSON. Only output the JSON object.`;
         content: `Analyze this food and estimate its nutritional content: "${text}". Assume a standard serving size unless specified.`,
       });
     } else {
-      throw new Error("No food input provided");
+      return new Response(
+        JSON.stringify({ error: "No food input provided. Please enter text or upload an image." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
+    console.info("Sending request to AI gateway...");
+
+    const response = await fetchWithRetry(
+      "https://ai.gateway.lovable.dev/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages,
+        }),
       },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages,
-      }),
-    });
+      2,
+      45000
+    );
+
+    console.info("AI gateway response status:", response.status);
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error("AI gateway error:", response.status, errorText);
+
       if (response.status === 429) {
         return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
+          JSON.stringify({ error: "Too many requests. Please wait a moment and try again." }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -93,22 +170,20 @@ Do not include any text before or after the JSON. Only output the JSON object.`;
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      throw new Error("Failed to analyze food");
+      throw new Error(`AI analysis failed (status ${response.status})`);
     }
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
+    console.info("AI response content length:", content?.length || 0);
 
     if (!content) {
+      console.error("No content in AI response:", JSON.stringify(data));
       throw new Error("No response from AI");
     }
 
-    // Parse the JSON response
     let result;
     try {
-      // Try to extract JSON from the response
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         result = JSON.parse(jsonMatch[0]);
@@ -117,7 +192,6 @@ Do not include any text before or after the JSON. Only output the JSON object.`;
       }
     } catch (parseError) {
       console.error("Failed to parse AI response:", content);
-      // Return a default response if parsing fails
       result = {
         food_name: text || "Unknown food",
         calories: 200,
@@ -129,6 +203,8 @@ Do not include any text before or after the JSON. Only output the JSON object.`;
         suggestions: "Could not fully analyze this food. Consider logging with manual adjustments.",
       };
     }
+
+    console.info("analyze-food success:", result.food_name, result.calories, "cal");
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

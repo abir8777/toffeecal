@@ -62,8 +62,19 @@ export default function LogFood() {
     } else {
       toast({
         title: "Analysis failed",
-        description: error || "Please try again.",
+        description: error || "Could not analyze food. You can try again or enter details manually below.",
         variant: "destructive",
+      });
+      // Show manual entry as fallback
+      setAnalysisResult({
+        food_name: mode === 'text' ? textInput.trim() : 'Food item',
+        calories: 200,
+        calories_min: 150,
+        calories_max: 250,
+        protein_g: 5,
+        carbs_g: 25,
+        fat_g: 8,
+        suggestions: 'AI analysis was unavailable. Please adjust these estimated values as needed.',
       });
     }
   };

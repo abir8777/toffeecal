@@ -1,1 +1,10 @@
 project_id = "jyvfwouuamxpkutwmqew"
+
+[functions.analyze-food]
+verify_jwt = false
+
+[functions.health-coach]
+verify_jwt = false
+
+[functions.daily-tip]
+verify_jwt = false
