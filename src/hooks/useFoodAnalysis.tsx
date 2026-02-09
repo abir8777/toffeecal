@@ -2,6 +2,10 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { FoodAnalysisResult } from '@/types';
 
+const MAX_IMAGE_SIZE_BYTES = 3 * 1024 * 1024; // 3MB
+const MAX_IMAGE_DIMENSION = 1024; // px
+const SUPPORTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+
 export function useFoodAnalysis() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,9 +23,20 @@ export function useFoodAnalysis() {
       if (inputType === 'text') {
         body.text = input as string;
       } else {
-        // Convert image to base64
         const file = input as File;
-        const base64 = await fileToBase64(file);
+
+        // Validate file type
+        if (!SUPPORTED_TYPES.includes(file.type)) {
+          throw new Error(`Unsupported image type: ${file.type}. Please use JPEG, PNG, or WebP.`);
+        }
+
+        // Validate file size before compression
+        if (file.size > 10 * 1024 * 1024) {
+          throw new Error('Image is too large (max 10MB). Please choose a smaller image.');
+        }
+
+        // Compress and convert to base64
+        const base64 = await compressAndConvert(file);
         body.image = base64;
       }
 
@@ -30,12 +45,18 @@ export function useFoodAnalysis() {
       });
 
       if (fnError) {
-        throw new Error(fnError.message);
+        console.error('Edge function error:', fnError);
+        throw new Error(fnError.message || 'Failed to reach analysis service');
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
       }
 
       return data as FoodAnalysisResult;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to analyze food';
+      console.error('Food analysis error:', err);
+      const message = err instanceof Error ? err.message : 'Failed to analyze food. Please try again or enter details manually.';
       setError(message);
       return null;
     } finally {
@@ -50,15 +71,59 @@ export function useFoodAnalysis() {
   };
 }
 
-function fileToBase64(file: File): Promise<string> {
+function compressAndConvert(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => {
-      const result = reader.result as string;
-      // Remove the data URL prefix to get just the base64 string
-      resolve(result);
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+
+      let { width, height } = img;
+
+      // Scale down if needed
+      if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION) {
+        const ratio = Math.min(MAX_IMAGE_DIMENSION / width, MAX_IMAGE_DIMENSION / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Could not create canvas context'));
+        return;
+      }
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Start with quality 0.7, reduce if still too large
+      let quality = 0.7;
+      let dataUrl = canvas.toDataURL('image/jpeg', quality);
+
+      while (dataUrl.length > MAX_IMAGE_SIZE_BYTES && quality > 0.2) {
+        quality -= 0.1;
+        dataUrl = canvas.toDataURL('image/jpeg', quality);
+      }
+
+      if (dataUrl.length > MAX_IMAGE_SIZE_BYTES) {
+        // Further reduce dimensions
+        const smallerRatio = 0.5;
+        canvas.width = Math.round(width * smallerRatio);
+        canvas.height = Math.round(height * smallerRatio);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+      }
+
+      resolve(dataUrl);
     };
-    reader.onerror = (error) => reject(error);
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Failed to load image. Please try a different image.'));
+    };
+
+    img.src = url;
   });
 }
