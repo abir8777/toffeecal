@@ -85,15 +85,37 @@ serve(async (req) => {
     const body = await req.json();
     const { text, image } = body;
 
+    // Input validation
+    if (text !== undefined && typeof text !== "string") {
+      return new Response(
+        JSON.stringify({ error: "Invalid text input" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    if (text && text.length > 500) {
+      return new Response(
+        JSON.stringify({ error: "Text input too long (max 500 characters)" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    if (image !== undefined && typeof image !== "string") {
+      return new Response(
+        JSON.stringify({ error: "Invalid image input" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const sanitizedText = text?.trim().slice(0, 500);
+
     console.info("=== analyze-food request ===");
     console.info("User:", user.id);
-    console.info("Has text:", !!text, text ? `(${text.length} chars)` : "");
+    console.info("Has text:", !!sanitizedText, sanitizedText ? `(${sanitizedText.length} chars)` : "");
     console.info("Has image:", !!image, image ? `(${image.length} chars / ~${Math.round(image.length * 0.75 / 1024)}KB)` : "");
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       console.error("LOVABLE_API_KEY is not configured");
-      throw new Error("LOVABLE_API_KEY is not configured");
+      throw new Error("Service configuration error");
     }
 
     // Validate image size (max ~4MB base64 ≈ 3MB file)
@@ -146,10 +168,10 @@ Do not include any text before or after the JSON. Only output the JSON object.`;
           },
         ],
       });
-    } else if (text) {
+    } else if (sanitizedText) {
       messages.push({
         role: "user",
-        content: `Analyze this food and estimate its nutritional content: "${text}". Assume a standard serving size unless specified.`,
+        content: `Analyze this food and estimate its nutritional content: "${sanitizedText}". Assume a standard serving size unless specified.`,
       });
     } else {
       return new Response(
