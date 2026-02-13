@@ -46,7 +46,7 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen gradient-hero flex flex-col items-center justify-center p-6">
+    <main className="min-h-screen gradient-hero flex flex-col items-center justify-center p-6">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -82,7 +82,7 @@ export default function Auth() {
               className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all ${
                 isLogin 
                   ? 'bg-card text-foreground shadow-sm' 
-                  : 'text-muted-foreground'
+                  : 'text-foreground/60'
               }`}
             >
               Sign In
@@ -93,7 +93,7 @@ export default function Auth() {
               className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all ${
                 !isLogin 
                   ? 'bg-card text-foreground shadow-sm' 
-                  : 'text-muted-foreground'
+                  : 'text-foreground/60'
               }`}
             >
               Sign Up
@@ -130,7 +130,8 @@ export default function Auth() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground p-1"
                 >
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
@@ -155,6 +156,6 @@ export default function Auth() {
           By continuing, you agree to our Terms of Service and Privacy Policy
         </p>
       </motion.div>
-    </div>
+    </main>
   );
 }
