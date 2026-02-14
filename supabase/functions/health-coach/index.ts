@@ -12,7 +12,45 @@ serve(async (req) => {
   }
 
   try {
-    const { message, conversationHistory } = await req.json();
+    const body = await req.json();
+    const { message } = body;
+    let { conversationHistory } = body;
+
+    // Validate message
+    if (!message || typeof message !== "string") {
+      return new Response(
+        JSON.stringify({ error: "Message is required and must be a string" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    if (message.length > 2000) {
+      return new Response(
+        JSON.stringify({ error: "Message too long (max 2000 characters)" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate conversation history
+    if (conversationHistory && !Array.isArray(conversationHistory)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid conversation history format" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    if (conversationHistory && conversationHistory.length > 50) {
+      conversationHistory = conversationHistory.slice(-50);
+    }
+    if (conversationHistory) {
+      for (const msg of conversationHistory) {
+        if (!msg.role || !msg.content || typeof msg.content !== "string") {
+          return new Response(
+            JSON.stringify({ error: "Invalid message format in conversation history" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+    }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
@@ -157,9 +195,8 @@ Remember: You're a supportive coach, not a doctor. Focus on general wellness, nu
     });
   } catch (error) {
     console.error("health-coach error:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: "An error occurred with the health coach. Please try again." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

@@ -123,7 +123,7 @@ Current time: ${new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute
   } catch (error) {
     console.error("daily-tip error:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ error: "An error occurred while generating your daily tip. Please try again." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
