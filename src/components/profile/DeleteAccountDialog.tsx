@@ -18,40 +18,26 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
 export function DeleteAccountDialog() {
-  const { user, signOut } = useAuth();
+  const { signOut } = useAuth();
   const [confirmText, setConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [open, setOpen] = useState(false);
 
   const handleDelete = async () => {
-    if (!user || confirmText !== 'DELETE') return;
+    if (confirmText !== 'DELETE') return;
 
     setIsDeleting(true);
     try {
-      // Delete user data from tables
-      await supabase.from('food_logs').delete().eq('user_id', user.id);
-      await supabase.from('weight_logs').delete().eq('user_id', user.id);
-      await supabase.from('water_intake').delete().eq('user_id', user.id);
-      await supabase.from('profiles').delete().eq('user_id', user.id);
+      const { data, error } = await supabase.functions.invoke('delete-account', {
+        body: { confirmText: 'DELETE' },
+      });
 
-      // Delete avatar from storage
-      const { data: files } = await supabase.storage
-        .from('avatars')
-        .list(user.id);
-      
-      if (files && files.length > 0) {
-        await supabase.storage
-          .from('avatars')
-          .remove(files.map(f => `${user.id}/${f.name}`));
-      }
+      if (error) throw error;
 
-      // Sign out the user
       await signOut();
-      
-      toast.success('Your account data has been deleted');
+      toast.success('Your account has been deleted');
     } catch (error) {
-      console.error('Delete error:', error);
-      toast.error('Failed to delete account data');
+      toast.error('Failed to delete account. Please try again.');
     } finally {
       setIsDeleting(false);
       setOpen(false);

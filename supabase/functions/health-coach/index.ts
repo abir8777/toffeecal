@@ -12,11 +12,34 @@ serve(async (req) => {
   }
 
   try {
+    // Authenticate first
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Authentication required" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return new Response(
+        JSON.stringify({ error: "User not authenticated" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Now validate inputs
     const body = await req.json();
     const { message } = body;
     let { conversationHistory } = body;
 
-    // Validate message
     if (!message || typeof message !== "string") {
       return new Response(
         JSON.stringify({ error: "Message is required and must be a string" }),
@@ -30,7 +53,6 @@ serve(async (req) => {
       );
     }
 
-    // Validate conversation history
     if (conversationHistory && !Array.isArray(conversationHistory)) {
       return new Response(
         JSON.stringify({ error: "Invalid conversation history format" }),
@@ -52,27 +74,9 @@ serve(async (req) => {
     }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    
     if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
-
-    // Get user context from Supabase
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      throw new Error("No authorization header");
-    }
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
-    // Get user profile for personalized advice
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      throw new Error("User not authenticated");
+      console.error("LOVABLE_API_KEY is not configured");
+      throw new Error("Service configuration error");
     }
 
     const { data: profile } = await supabase
@@ -178,8 +182,7 @@ Remember: You're a supportive coach, not a doctor. Focus on general wellness, nu
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
+      console.error("AI gateway error", { status: response.status });
       throw new Error("Failed to get response from health coach");
     }
 

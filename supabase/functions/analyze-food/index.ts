@@ -107,10 +107,7 @@ serve(async (req) => {
 
     const sanitizedText = text?.trim().slice(0, 500);
 
-    console.info("=== analyze-food request ===");
-    console.info("User:", user.id);
-    console.info("Has text:", !!sanitizedText, sanitizedText ? `(${sanitizedText.length} chars)` : "");
-    console.info("Has image:", !!image, image ? `(${image.length} chars / ~${Math.round(image.length * 0.75 / 1024)}KB)` : "");
+    console.info("analyze-food request received", { hasText: !!sanitizedText, hasImage: !!image });
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -120,7 +117,7 @@ serve(async (req) => {
 
     // Validate image size (max ~4MB base64 ≈ 3MB file)
     if (image && image.length > 4 * 1024 * 1024) {
-      console.error("Image too large:", image.length, "chars");
+      console.error("Image too large");
       return new Response(
         JSON.stringify({ error: "Image is too large. Please use an image under 3MB." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -180,7 +177,7 @@ Do not include any text before or after the JSON. Only output the JSON object.`;
       );
     }
 
-    console.info("Sending request to AI gateway...");
+    
 
     const response = await fetchWithRetry(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
@@ -199,11 +196,10 @@ Do not include any text before or after the JSON. Only output the JSON object.`;
       45000
     );
 
-    console.info("AI gateway response status:", response.status);
+    
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
+      console.error("AI gateway error", { status: response.status });
 
       if (response.status === 429) {
         return new Response(
@@ -222,10 +218,9 @@ Do not include any text before or after the JSON. Only output the JSON object.`;
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
-    console.info("AI response content length:", content?.length || 0);
 
     if (!content) {
-      console.error("No content in AI response:", JSON.stringify(data));
+      console.error("No content in AI response");
       throw new Error("No response from AI");
     }
 
@@ -238,7 +233,7 @@ Do not include any text before or after the JSON. Only output the JSON object.`;
         throw new Error("No JSON found in response");
       }
     } catch (parseError) {
-      console.error("Failed to parse AI response:", content);
+      console.error("Failed to parse AI response");
       result = {
         food_name: text || "Unknown food",
         calories: 200,
@@ -251,7 +246,7 @@ Do not include any text before or after the JSON. Only output the JSON object.`;
       };
     }
 
-    console.info("analyze-food success:", result.food_name, result.calories, "cal");
+    console.info("analyze-food completed successfully");
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
