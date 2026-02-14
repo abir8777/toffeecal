@@ -106,7 +106,7 @@ Current time: ${new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute
     });
 
     if (!response.ok) {
-      console.error("AI gateway error:", response.status);
+      console.error("AI gateway error", { status: response.status });
       throw new Error("Failed to generate tip");
     }
 
@@ -115,7 +115,7 @@ Current time: ${new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute
 
     if (!tip) throw new Error("No tip generated");
 
-    console.log("Daily tip generated for user:", user.id);
+    console.info("Daily tip generated successfully");
 
     return new Response(JSON.stringify({ tip }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
