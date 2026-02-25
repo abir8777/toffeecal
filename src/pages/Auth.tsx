@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Cookie, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Flame, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
@@ -25,32 +25,23 @@ export default function Auth() {
     e.preventDefault();
     setIsLoading(true);
 
-    try {
-      const { error } = isLogin 
-        ? await signIn(email, password)
-        : await signUp(email, password);
+    const { error } = isLogin 
+      ? await signIn(email, password)
+      : await signUp(email, password);
 
-      if (error) {
-        toast({
-          title: isLogin ? "Sign in failed" : "Sign up failed",
-          description: error.message,
-          variant: "destructive",
-        });
-      } else if (!isLogin) {
-        toast({
-          title: "Account created!",
-          description: "You can now sign in.",
-        });
-      }
-    } catch (err: any) {
-      console.error("Auth error:", err);
+    setIsLoading(false);
+
+    if (error) {
       toast({
-        title: "Something went wrong",
-        description: err?.message || "Please try again.",
+        title: isLogin ? "Sign in failed" : "Sign up failed",
+        description: error.message,
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
+    } else if (!isLogin) {
+      toast({
+        title: "Check your email",
+        description: "We've sent you a verification link to complete signup.",
+      });
     }
   };
 
@@ -69,7 +60,7 @@ export default function Auth() {
             transition={{ type: "spring", duration: 0.6 }}
             className="inline-flex items-center justify-center w-20 h-20 rounded-3xl gradient-primary shadow-glow mb-4"
           >
-            <Cookie className="h-10 w-10 text-primary-foreground" />
+            <Flame className="h-10 w-10 text-primary-foreground" />
           </motion.div>
           <h1 className="text-3xl font-bold text-foreground">ToffeeCal</h1>
           <p className="text-muted-foreground mt-2">

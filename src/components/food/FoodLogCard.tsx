@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Trash2, Cookie, Beef, Wheat, Droplets } from 'lucide-react';
+import { Trash2, Flame, Beef, Wheat, Droplets } from 'lucide-react';
 import { FoodLog } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -37,7 +37,7 @@ export function FoodLogCard({ log, onDelete }: FoodLogCardProps) {
               
               <div className="flex items-center gap-3 text-sm text-muted-foreground">
                 <span className="flex items-center gap-1">
-                  <Cookie className="h-3.5 w-3.5 text-accent" />
+                  <Flame className="h-3.5 w-3.5 text-accent" />
                   {log.calories} cal
                 </span>
                 <span className="flex items-center gap-1">
