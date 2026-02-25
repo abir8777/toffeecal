@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Flame, TrendingUp, Calendar } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Cookie, TrendingUp, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -176,7 +176,7 @@ export default function History() {
               {isSameDay(selectedDate, new Date()) ? 'Today' : format(selectedDate, 'EEEE, MMM d')}
             </h2>
             <div className="flex items-center gap-1 text-sm text-muted-foreground">
-              <Flame className="h-4 w-4 text-accent" />
+              <Cookie className="h-4 w-4 text-accent" />
               {formatCalories(dailySummary.total_calories)} cal
             </div>
           </div>
