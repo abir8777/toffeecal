@@ -351,7 +351,7 @@ export default function Profile() {
 
         {/* App Info */}
         <div className="text-center text-xs text-muted-foreground space-y-1 pt-4">
-          <p>NutriTrack v1.0</p>
+          <p>ToffeeCal v1.0</p>
           <p>⚠️ Calorie estimates are approximate and not medical advice.</p>
         </div>
       </div>
