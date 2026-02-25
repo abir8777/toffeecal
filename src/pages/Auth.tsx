@@ -25,23 +25,32 @@ export default function Auth() {
     e.preventDefault();
     setIsLoading(true);
 
-    const { error } = isLogin 
-      ? await signIn(email, password)
-      : await signUp(email, password);
+    try {
+      const { error } = isLogin 
+        ? await signIn(email, password)
+        : await signUp(email, password);
 
-    setIsLoading(false);
-
-    if (error) {
+      if (error) {
+        toast({
+          title: isLogin ? "Sign in failed" : "Sign up failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else if (!isLogin) {
+        toast({
+          title: "Account created!",
+          description: "You can now sign in.",
+        });
+      }
+    } catch (err: any) {
+      console.error("Auth error:", err);
       toast({
-        title: isLogin ? "Sign in failed" : "Sign up failed",
-        description: error.message,
+        title: "Something went wrong",
+        description: err?.message || "Please try again.",
         variant: "destructive",
       });
-    } else if (!isLogin) {
-      toast({
-        title: "Check your email",
-        description: "We've sent you a verification link to complete signup.",
-      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
