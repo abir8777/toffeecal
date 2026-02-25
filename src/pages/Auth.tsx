@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Flame, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Cookie, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
@@ -60,7 +60,7 @@ export default function Auth() {
             transition={{ type: "spring", duration: 0.6 }}
             className="inline-flex items-center justify-center w-20 h-20 rounded-3xl gradient-primary shadow-glow mb-4"
           >
-            <Flame className="h-10 w-10 text-primary-foreground" />
+            <Cookie className="h-10 w-10 text-primary-foreground" />
           </motion.div>
           <h1 className="text-3xl font-bold text-foreground">ToffeeCal</h1>
           <p className="text-muted-foreground mt-2">

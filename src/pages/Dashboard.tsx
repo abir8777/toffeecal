@@ -1,6 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Flame, Plus, TrendingUp, Sparkles } from 'lucide-react';
+import { Cookie, Plus, TrendingUp, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -88,7 +88,7 @@ export default function Dashboard() {
                   <CircularProgress percentage={progress} size={192} strokeWidth={14}>
                     <div className="text-center">
                       <div className="flex items-center justify-center gap-1 text-accent mb-1">
-                        <Flame className="h-5 w-5" />
+                        <Cookie className="h-5 w-5" />
                         <span className="text-sm font-medium">Remaining</span>
                       </div>
                       <div className="text-4xl font-bold text-foreground">
