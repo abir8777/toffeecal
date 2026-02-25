@@ -62,7 +62,7 @@ export default function Auth() {
           >
             <Flame className="h-10 w-10 text-primary-foreground" />
           </motion.div>
-          <h1 className="text-3xl font-bold text-foreground">ToffeeCal</h1>
+          <h1 className="text-3xl font-bold text-foreground">NutriTrack</h1>
           <p className="text-muted-foreground mt-2">
             Your AI-powered nutrition companion
           </p>
