@@ -12,6 +12,48 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AUTH_TIMEOUT_MS = 12000;
+
+const getAuthStorageKey = () => {
+  const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+  return projectId ? `sb-${projectId}-auth-token` : null;
+};
+
+const clearStaleAuthToken = () => {
+  try {
+    const authStorageKey = getAuthStorageKey();
+    if (authStorageKey) {
+      localStorage.removeItem(authStorageKey);
+    }
+  } catch {
+    // no-op
+  }
+};
+
+const isLockTimeoutError = (error: unknown) => {
+  if (!(error instanceof Error)) return false;
+  const message = error.message.toLowerCase();
+  return message.includes('lockmanager') || message.includes('timed out waiting') || message.includes('acquirelock');
+};
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMessage: string): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(timeoutMessage)), AUTH_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
+const normalizeAuthError = (error: unknown, fallbackMessage: string) => {
+  if (error instanceof Error) return error;
+  return new Error(fallbackMessage);
+};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -32,35 +74,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     // Then get initial session
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (!mounted) return;
-      if (error) {
-        console.warn('Failed to get session, clearing stale auth data:', error.message);
-        // Clear any corrupted/stale session data
-        supabase.auth.signOut().catch(() => {});
-        setSession(null);
-        setUser(null);
-      } else {
-        setSession(session);
-        setUser(session?.user ?? null);
-      }
-      setLoading(false);
-    }).catch(() => {
-      if (!mounted) return;
-      // Network error – clear state and let user sign in fresh
-      setSession(null);
-      setUser(null);
-      setLoading(false);
-    });
+    withTimeout(
+      supabase.auth.getSession(),
+      'Authentication initialization timed out. Please try again.'
+    )
+      .then(({ data: { session }, error }) => {
+        if (!mounted) return;
 
-    // Safety timeout – never stay loading forever
-    const timeout = setTimeout(() => {
-      if (mounted && loading) {
-        console.warn('Auth loading timed out, clearing state');
+        if (error) {
+          clearStaleAuthToken();
+          setSession(null);
+          setUser(null);
+        } else {
+          setSession(session);
+          setUser(session?.user ?? null);
+        }
+
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        clearStaleAuthToken();
         setSession(null);
         setUser(null);
         setLoading(false);
-      }
+      });
+
+    // Safety timeout – never stay loading forever
+    const timeout = setTimeout(() => {
+      if (!mounted) return;
+
+      setLoading((prev) => {
+        if (!prev) return prev;
+        clearStaleAuthToken();
+        setSession(null);
+        setUser(null);
+        return false;
+      });
     }, 8000);
 
     return () => {
@@ -72,27 +122,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = useCallback(async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signUp({ email, password });
+      const { error } = await withTimeout(
+        supabase.auth.signUp({ email, password }),
+        'Sign up is taking too long. Please try again.'
+      );
       return { error: error as Error | null };
-    } catch (err) {
-      return { error: new Error('Network error. Please check your connection and try again.') };
+    } catch (error) {
+      if (isLockTimeoutError(error)) {
+        clearStaleAuthToken();
+      }
+      return { error: normalizeAuthError(error, 'Network error. Please check your connection and try again.') };
     }
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
+    const runSignIn = () => withTimeout(
+      supabase.auth.signInWithPassword({ email, password }),
+      'Sign in is taking too long. Please try again.'
+    );
+
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await runSignIn();
       return { error: error as Error | null };
-    } catch (err) {
-      return { error: new Error('Network error. Please check your connection and try again.') };
+    } catch (firstError) {
+      if (isLockTimeoutError(firstError)) {
+        clearStaleAuthToken();
+
+        try {
+          const { error } = await runSignIn();
+          return { error: error as Error | null };
+        } catch (secondError) {
+          return {
+            error: normalizeAuthError(
+              secondError,
+              'Your previous session got stuck. Please try signing in again.'
+            ),
+          };
+        }
+      }
+
+      return { error: normalizeAuthError(firstError, 'Network error. Please check your connection and try again.') };
     }
   }, []);
 
   const signOut = useCallback(async () => {
     try {
-      await supabase.auth.signOut();
+      await withTimeout(supabase.auth.signOut(), 'Sign out timed out.');
     } catch {
-      // Even if signOut fails on server, clear local state
+      clearStaleAuthToken();
       setSession(null);
       setUser(null);
     }
