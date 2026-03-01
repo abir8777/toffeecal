@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Flame, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,45 +13,58 @@ export default function Auth() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  
-  const { user, signIn, signUp } = useAuth();
+
+  const { user, loading, signIn, signUp } = useAuth();
   const { toast } = useToast();
 
+  // If auth is still initializing, show a brief loader
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Already logged in → go to dashboard
   if (user) {
     return <Navigate to="/dashboard" replace />;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (isLoading) return;
+
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !password) return;
 
     setIsLoading(true);
 
     try {
-      const normalizedEmail = email.trim();
-
       const { error } = isLogin
-        ? await signIn(normalizedEmail, password)
-        : await signUp(normalizedEmail, password);
+        ? await signIn(trimmedEmail, password)
+        : await signUp(trimmedEmail, password);
 
       if (error) {
         toast({
-          title: isLogin ? "Sign in failed" : "Sign up failed",
+          title: isLogin ? 'Sign in failed' : 'Sign up failed',
           description: error.message,
-          variant: "destructive",
+          variant: 'destructive',
         });
       } else if (!isLogin) {
         toast({
-          title: "Check your email",
-          description: "We've sent you a verification link to complete signup.",
+          title: 'Account created! 🎉',
+          description: 'You can now sign in with your credentials.',
         });
+        setIsLogin(true);
+        setPassword('');
       }
+      // On successful sign-in, onAuthStateChange sets user → Navigate kicks in
     } catch {
       toast({
-        title: isLogin ? "Sign in failed" : "Sign up failed",
-        description: "Something went wrong. Please try again.",
-        variant: "destructive",
+        title: 'Something went wrong',
+        description: 'Please check your connection and try again.',
+        variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
@@ -70,15 +83,13 @@ export default function Auth() {
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            transition={{ type: "spring", duration: 0.6 }}
+            transition={{ type: 'spring', duration: 0.6 }}
             className="inline-flex items-center justify-center w-20 h-20 rounded-3xl gradient-primary shadow-glow mb-4"
           >
             <Flame className="h-10 w-10 text-primary-foreground" />
           </motion.div>
           <h1 className="text-3xl font-bold text-foreground">NutriTrack</h1>
-          <p className="text-muted-foreground mt-2">
-            Your AI-powered nutrition companion
-          </p>
+          <p className="text-muted-foreground mt-2">Your AI-powered nutrition companion</p>
         </div>
 
         {/* Auth Form */}
@@ -93,9 +104,7 @@ export default function Auth() {
               type="button"
               onClick={() => setIsLogin(true)}
               className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all ${
-                isLogin 
-                  ? 'bg-card text-foreground shadow-sm' 
-                  : 'text-foreground/60'
+                isLogin ? 'bg-card text-foreground shadow-sm' : 'text-foreground/60'
               }`}
             >
               Sign In
@@ -104,9 +113,7 @@ export default function Auth() {
               type="button"
               onClick={() => setIsLogin(false)}
               className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all ${
-                !isLogin 
-                  ? 'bg-card text-foreground shadow-sm' 
-                  : 'text-foreground/60'
+                !isLogin ? 'bg-card text-foreground shadow-sm' : 'text-foreground/60'
               }`}
             >
               Sign Up
@@ -114,41 +121,37 @@ export default function Auth() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                  type="email"
-                  placeholder="Email address"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 h-12 rounded-xl"
-                  required
-                />
-              </div>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input
+                type="email"
+                placeholder="Email address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="pl-10 h-12 rounded-xl"
+                required
+              />
             </div>
 
-            <div className="space-y-2">
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10 h-12 rounded-xl"
-                  required
-                  minLength={6}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground p-1"
-                >
-                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                </button>
-              </div>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="pl-10 pr-10 h-12 rounded-xl"
+                required
+                minLength={6}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground p-1"
+              >
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </button>
             </div>
 
             <Button
@@ -158,8 +161,10 @@ export default function Auth() {
             >
               {isLoading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
+              ) : isLogin ? (
+                'Sign In'
               ) : (
-                isLogin ? 'Sign In' : 'Create Account'
+                'Create Account'
               )}
             </Button>
           </form>
