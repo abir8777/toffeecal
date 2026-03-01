@@ -23,25 +23,38 @@ export default function Auth() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (isLoading) return;
+
     setIsLoading(true);
 
-    const { error } = isLogin 
-      ? await signIn(email, password)
-      : await signUp(email, password);
+    try {
+      const normalizedEmail = email.trim();
 
-    setIsLoading(false);
+      const { error } = isLogin
+        ? await signIn(normalizedEmail, password)
+        : await signUp(normalizedEmail, password);
 
-    if (error) {
+      if (error) {
+        toast({
+          title: isLogin ? "Sign in failed" : "Sign up failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else if (!isLogin) {
+        toast({
+          title: "Check your email",
+          description: "We've sent you a verification link to complete signup.",
+        });
+      }
+    } catch {
       toast({
         title: isLogin ? "Sign in failed" : "Sign up failed",
-        description: error.message,
+        description: "Something went wrong. Please try again.",
         variant: "destructive",
       });
-    } else if (!isLogin) {
-      toast({
-        title: "Check your email",
-        description: "We've sent you a verification link to complete signup.",
-      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
