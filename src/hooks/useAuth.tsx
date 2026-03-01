@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, createContext, useContext, ReactNode } from 'react';
+import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -19,70 +19,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let mounted = true;
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
 
-    // 1. Listen for auth changes
+    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, newSession) => {
-        if (!mounted) return;
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
+      (_event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
         setLoading(false);
       }
     );
 
-    // 2. Get initial session
-    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
-      if (!mounted) return;
-      setSession(initialSession);
-      setUser(initialSession?.user ?? null);
-      setLoading(false);
-    }).catch(() => {
-      if (!mounted) return;
-      setLoading(false);
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const signUp = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
     });
+    return { error: error as Error | null };
+  };
 
-    // 3. Safety timeout - never stay loading forever
-    const safetyTimer = setTimeout(() => {
-      if (mounted) setLoading(false);
-    }, 5000);
+  const signIn = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    return { error: error as Error | null };
+  };
 
-    return () => {
-      mounted = false;
-      clearTimeout(safetyTimer);
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  const signUp = useCallback(async (email: string, password: string): Promise<{ error: Error | null }> => {
-    try {
-      const { error } = await supabase.auth.signUp({ email, password });
-      if (error) return { error: new Error(error.message) };
-      return { error: null };
-    } catch (err) {
-      return { error: err instanceof Error ? err : new Error('Sign up failed') };
-    }
-  }, []);
-
-  const signIn = useCallback(async (email: string, password: string): Promise<{ error: Error | null }> => {
-    try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) return { error: new Error(error.message) };
-      return { error: null };
-    } catch (err) {
-      return { error: err instanceof Error ? err : new Error('Sign in failed') };
-    }
-  }, []);
-
-  const signOut = useCallback(async () => {
-    try {
-      await supabase.auth.signOut();
-    } catch {
-      // Force clear local state even if signOut fails
-      setSession(null);
-      setUser(null);
-    }
-  }, []);
+  const signOut = async () => {
+    await supabase.auth.signOut();
+  };
 
   return (
     <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut }}>
