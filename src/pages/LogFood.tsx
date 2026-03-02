@@ -1,11 +1,13 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, Type, ArrowLeft, Loader2, Check, Sparkles, Upload, Image } from 'lucide-react';
+import { Camera, Type, ArrowLeft, Loader2, Check, Sparkles, Upload, Image, UtensilsCrossed } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { AuthDialog } from '@/components/auth/AuthDialog';
+import { useAuth } from '@/hooks/useAuth';
 import { useFoodAnalysis } from '@/hooks/useFoodAnalysis';
 import { useFoodLogs } from '@/hooks/useFoodLogs';
 import { useToast } from '@/hooks/use-toast';
@@ -22,12 +24,14 @@ const mealTypes: { value: MealType; label: string; emoji: string }[] = [
 ];
 
 export default function LogFood() {
+  const { user } = useAuth();
   const [mode, setMode] = useState<InputMode>('choice');
   const [textInput, setTextInput] = useState('');
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [mealType, setMealType] = useState<MealType>('lunch');
   const [analysisResult, setAnalysisResult] = useState<FoodAnalysisResult | null>(null);
+  const [authOpen, setAuthOpen] = useState(false);
   
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -35,6 +39,22 @@ export default function LogFood() {
   const { addFoodLog, isAdding } = useFoodLogs();
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  if (!user) {
+    return (
+      <AppLayout hideNav>
+        <div className="p-4 flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4">
+          <UtensilsCrossed className="h-12 w-12 text-primary" />
+          <h1 className="text-2xl font-bold text-foreground">Log Food</h1>
+          <p className="text-muted-foreground">Sign in to log and analyze your meals</p>
+          <Button onClick={() => setAuthOpen(true)} className="gradient-primary text-primary-foreground font-semibold rounded-xl h-12 px-8">
+            Sign In
+          </Button>
+          <AuthDialog open={authOpen} onOpenChange={setAuthOpen} />
+        </div>
+      </AppLayout>
+    );
+  }
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
