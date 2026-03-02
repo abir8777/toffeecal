@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Flame, Plus, TrendingUp, Sparkles } from 'lucide-react';
@@ -9,6 +10,7 @@ import { CircularProgress } from '@/components/ui/CircularProgress';
 import { MacroBar } from '@/components/ui/MacroBar';
 import { FoodLogCard } from '@/components/food/FoodLogCard';
 import { DailyTipCard } from '@/components/dashboard/DailyTipCard';
+import { AuthDialog } from '@/components/auth/AuthDialog';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useFoodLogs } from '@/hooks/useFoodLogs';
@@ -22,9 +24,25 @@ export default function Dashboard() {
   const { profile, isLoading: profileLoading } = useProfile();
   const { dailySummary, logs, isLoading: logsLoading, deleteFoodLog } = useFoodLogs();
   const { tip, isLoading: tipLoading, refresh: refreshTip } = useDailyTip();
+  const [authOpen, setAuthOpen] = useState(!user);
 
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    return (
+      <AppLayout>
+        <div className="p-4 flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4">
+          <Flame className="h-12 w-12 text-primary" />
+          <h1 className="text-2xl font-bold text-foreground">Welcome to NutriTrack</h1>
+          <p className="text-muted-foreground">Sign in to start tracking your nutrition</p>
+          <Button
+            onClick={() => setAuthOpen(true)}
+            className="gradient-primary text-primary-foreground font-semibold rounded-xl h-12 px-8"
+          >
+            Get Started
+          </Button>
+          <AuthDialog open={authOpen} onOpenChange={setAuthOpen} />
+        </div>
+      </AppLayout>
+    );
   }
 
   if (profile && !profile.onboarding_completed) {

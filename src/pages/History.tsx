@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { FoodLogCard } from '@/components/food/FoodLogCard';
+import { AuthDialog } from '@/components/auth/AuthDialog';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useFoodLogs, useWeeklySummary } from '@/hooks/useFoodLogs';
@@ -19,9 +20,22 @@ export default function History() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const { logs, isLoading, deleteFoodLog, dailySummary } = useFoodLogs(selectedDate);
   const { data: weeklySummary, isLoading: weeklyLoading } = useWeeklySummary();
+  const [authOpen, setAuthOpen] = useState(false);
 
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    return (
+      <AppLayout>
+        <div className="p-4 flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4">
+          <Calendar className="h-12 w-12 text-primary" />
+          <h1 className="text-2xl font-bold text-foreground">History</h1>
+          <p className="text-muted-foreground">Sign in to view your meal history</p>
+          <Button onClick={() => setAuthOpen(true)} className="gradient-primary text-primary-foreground font-semibold rounded-xl h-12 px-8">
+            Sign In
+          </Button>
+          <AuthDialog open={authOpen} onOpenChange={setAuthOpen} />
+        </div>
+      </AppLayout>
+    );
   }
 
   const calorieTarget = profile?.daily_calorie_target || 2000;
