@@ -5,6 +5,7 @@ import { User, Scale, Target, Activity, LogOut, ChevronRight, Crown, TrendingDow
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { AuthDialog } from '@/components/auth/AuthDialog';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useWeightLogs } from '@/hooks/useWeightLogs';
@@ -41,9 +42,22 @@ export default function Profile() {
   const [goalSheetOpen, setGoalSheetOpen] = useState(false);
   const [activitySheetOpen, setActivitySheetOpen] = useState(false);
   const [personalInfoSheetOpen, setPersonalInfoSheetOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
 
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    return (
+      <AppLayout>
+        <div className="p-4 flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4">
+          <User className="h-12 w-12 text-primary" />
+          <h1 className="text-2xl font-bold text-foreground">Profile</h1>
+          <p className="text-muted-foreground">Sign in to view your profile</p>
+          <Button onClick={() => setAuthOpen(true)} className="gradient-primary text-primary-foreground font-semibold rounded-xl h-12 px-8">
+            Sign In
+          </Button>
+          <AuthDialog open={authOpen} onOpenChange={setAuthOpen} />
+        </div>
+      </AppLayout>
+    );
   }
 
   const goalInfo = profile?.goal ? goalLabels[profile.goal] : null;

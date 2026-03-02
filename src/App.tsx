@@ -4,11 +4,9 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "@/hooks/useAuth";
-import { useProfile } from "@/hooks/useProfile";
+import { AuthProvider } from "@/hooks/useAuth";
 
 // Lazy-loaded pages
-const Auth = lazy(() => import("./pages/Auth"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const LogFood = lazy(() => import("./pages/LogFood"));
@@ -26,77 +24,18 @@ const PageLoader = () => (
 
 const queryClient = new QueryClient();
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-  const { profile, isLoading: profileLoading } = useProfile();
-
-  if (loading || profileLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-pulse text-primary">Loading...</div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Navigate to="/auth" replace />;
-  }
-
-  if (profile && !profile.onboarding_completed) {
-    return <Navigate to="/onboarding" replace />;
-  }
-
-  return <>{children}</>;
-}
-
 function AppRoutes() {
   return (
     <Suspense fallback={<PageLoader />}>
       <Routes>
-        <Route path="/auth" element={<Auth />} />
         <Route path="/onboarding" element={<Onboarding />} />
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/log"
-          element={
-            <ProtectedRoute>
-              <LogFood />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/history"
-          element={
-            <ProtectedRoute>
-              <History />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/coach"
-          element={
-            <ProtectedRoute>
-              <Coach />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/log" element={<LogFood />} />
+        <Route path="/history" element={<History />} />
+        <Route path="/coach" element={<Coach />} />
+        <Route path="/profile" element={<Profile />} />
         <Route path="/premium" element={<Premium />} />
-        <Route path="/" element={<Navigate to="/auth" replace />} />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
