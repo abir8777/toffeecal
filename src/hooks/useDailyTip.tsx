@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 export function useDailyTip() {
   const { user } = useAuth();
   const [tip, setTip] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!!user);
 
   const fetchTip = useCallback(async () => {
     if (!user) {
