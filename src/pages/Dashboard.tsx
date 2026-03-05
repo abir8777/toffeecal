@@ -31,7 +31,7 @@ export default function Dashboard() {
       <AppLayout>
         <div className="p-4 flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4">
           <Flame className="h-12 w-12 text-primary" />
-          <h1 className="text-2xl font-bold text-foreground">Welcome to NutriTrack</h1>
+          <h1 className="text-2xl font-bold text-foreground"><h1 className="text-2xl font-bold text-foreground">Welcome to toffeecal</h1></h1>
           <p className="text-muted-foreground">Sign in to start tracking your nutrition</p>
           <Button
             onClick={() => setAuthOpen(true)}

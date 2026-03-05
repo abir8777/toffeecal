@@ -65,7 +65,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
               </div>
             </div>
             <DialogTitle className="text-xl font-bold text-foreground">
-              Welcome to NutriTrack
+              Welcome to toffeecal
             </DialogTitle>
             <DialogDescription className="text-muted-foreground">
               Sign in to track your nutrition journey
