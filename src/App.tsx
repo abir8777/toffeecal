@@ -36,6 +36,7 @@ function AppRoutes() {
         <Route path="/coach" element={<Coach />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/premium" element={<Premium />} />
+        <Route path="/install" element={<Install />} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
