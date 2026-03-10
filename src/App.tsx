@@ -14,6 +14,7 @@ const Coach = lazy(() => import("./pages/Coach"));
 const History = lazy(() => import("./pages/History"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Premium = lazy(() => import("./pages/Premium"));
+const Install = lazy(() => import("./pages/Install"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const PageLoader = () => (
@@ -35,6 +36,7 @@ function AppRoutes() {
         <Route path="/coach" element={<Coach />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/premium" element={<Premium />} />
+        <Route path="/install" element={<Install />} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
