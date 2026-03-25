@@ -109,9 +109,9 @@ serve(async (req) => {
 
     console.info("analyze-food request received", { hasText: !!sanitizedText, hasImage: !!image });
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      console.error("LOVABLE_API_KEY is not configured");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) {
+      console.error("GEMINI_API_KEY is not configured");
       throw new Error("Service configuration error");
     }
 
@@ -180,15 +180,15 @@ Do not include any text before or after the JSON. Only output the JSON object.`;
     
 
     const response = await fetchWithRetry(
-      "https://ai.gateway.lovable.dev/v1/chat/completions",
+      `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`,
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          Authorization: `Bearer ${GEMINI_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: "gemini-2.5-flash",
           messages,
         }),
       },
