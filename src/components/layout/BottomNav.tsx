@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 const navItems = [
   { path: '/dashboard', icon: Home, label: 'Home' },
   { path: '/log', icon: PlusCircle, label: 'Log' },
-  { path: '/coach', icon: MessageCircle, label: 'Coach' },
+  { path: '/meal-plan', icon: CalendarDays, label: 'Meals' },
   { path: '/history', icon: History, label: 'History' },
   { path: '/profile', icon: User, label: 'Profile' },
 ];

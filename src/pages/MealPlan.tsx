@@ -39,9 +39,9 @@ function MealCard({ meal }: { meal: Meal }) {
         </div>
         <p className="text-xs text-muted-foreground mt-0.5">{meal.description}</p>
         <div className="flex gap-3 mt-1.5 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1"><Beef className="h-3 w-3 text-red-400" />{meal.protein_g}g</span>
-          <span className="flex items-center gap-1"><Wheat className="h-3 w-3 text-amber-400" />{meal.carbs_g}g</span>
-          <span className="flex items-center gap-1"><Droplet className="h-3 w-3 text-blue-400" />{meal.fat_g}g</span>
+          <span className="flex items-center gap-1"><Beef className="h-3 w-3 text-destructive" />{meal.protein_g}g</span>
+          <span className="flex items-center gap-1"><Wheat className="h-3 w-3 text-accent-foreground" />{meal.carbs_g}g</span>
+          <span className="flex items-center gap-1"><Droplet className="h-3 w-3 text-primary" />{meal.fat_g}g</span>
         </div>
       </div>
     </div>

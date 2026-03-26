@@ -35,6 +35,7 @@ function AppRoutes() {
         <Route path="/log" element={<LogFood />} />
         <Route path="/history" element={<History />} />
         <Route path="/coach" element={<Coach />} />
+        <Route path="/meal-plan" element={<MealPlan />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/premium" element={<Premium />} />
         <Route path="/install" element={<Install />} />
