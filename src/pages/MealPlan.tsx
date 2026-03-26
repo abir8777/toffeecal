@@ -159,6 +159,18 @@ export default function MealPlan() {
               animate={{ opacity: 1 }}
               className="space-y-4"
             >
+              <Button
+                onClick={savePlan}
+                disabled={isSaving}
+                variant="outline"
+                className="w-full h-12 rounded-xl font-semibold border-primary text-primary hover:bg-primary/5"
+              >
+                {isSaving ? (
+                  <span className="flex items-center gap-2"><Loader2 className="h-5 w-5 animate-spin" />Saving...</span>
+                ) : (
+                  <span className="flex items-center gap-2"><Save className="h-5 w-5" />Save Meal Plan</span>
+                )}
+              </Button>
               {mealPlan.map((day, i) => (
                 <DayCard key={day.day} dayPlan={day} index={i} />
               ))}

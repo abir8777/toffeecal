@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export interface Meal {
   type: 'breakfast' | 'lunch' | 'dinner' | 'snack';
@@ -19,11 +20,14 @@ export interface DayPlan {
 export function useWeeklyMealPlan() {
   const [mealPlan, setMealPlan] = useState<DayPlan[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentCuisine, setCurrentCuisine] = useState<string | null>(null);
 
   const generatePlan = useCallback(async (cuisinePreference: string) => {
     setIsLoading(true);
     setError(null);
+    setCurrentCuisine(cuisinePreference);
 
     try {
       const { data, error: fnError } = await supabase.functions.invoke('generate-meal-plan', {
@@ -42,5 +46,27 @@ export function useWeeklyMealPlan() {
     }
   }, []);
 
-  return { mealPlan, isLoading, error, generatePlan };
+  const savePlan = useCallback(async () => {
+    if (!mealPlan || !currentCuisine) return;
+    setIsSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const { error } = await supabase.from('saved_meal_plans').insert({
+        user_id: user.id,
+        cuisine: currentCuisine,
+        plan_data: mealPlan as any,
+      });
+      if (error) throw error;
+      toast.success('Meal plan saved!');
+    } catch (err: any) {
+      console.error('Save error:', err);
+      toast.error(err.message || 'Failed to save meal plan');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [mealPlan, currentCuisine]);
+
+  return { mealPlan, isLoading, isSaving, error, generatePlan, savePlan };
 }
