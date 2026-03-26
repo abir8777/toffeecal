@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CalendarDays, ChefHat, Flame, Beef, Wheat, Droplet, Loader2, AlertCircle } from 'lucide-react';
+import { CalendarDays, ChefHat, Flame, Beef, Wheat, Droplet, Loader2, AlertCircle, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
