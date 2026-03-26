@@ -80,7 +80,7 @@ function DayCard({ dayPlan, index }: { dayPlan: DayPlan; index: number }) {
 
 export default function MealPlan() {
   const { user } = useAuth();
-  const { mealPlan, isLoading, error, generatePlan } = useWeeklyMealPlan();
+  const { mealPlan, isLoading, isSaving, error, generatePlan, savePlan } = useWeeklyMealPlan();
   const [authOpen, setAuthOpen] = useState(false);
   const [selectedCuisine, setSelectedCuisine] = useState<string | null>(null);
 
