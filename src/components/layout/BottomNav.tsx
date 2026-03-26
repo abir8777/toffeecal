@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, PlusCircle, History, User, MessageCircle } from 'lucide-react';
+import { Home, PlusCircle, History, User, CalendarDays } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 
