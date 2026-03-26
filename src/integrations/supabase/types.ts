@@ -122,6 +122,30 @@ export type Database = {
         }
         Relationships: []
       }
+      saved_meal_plans: {
+        Row: {
+          created_at: string
+          cuisine: string
+          id: string
+          plan_data: Json
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          cuisine: string
+          id?: string
+          plan_data: Json
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          cuisine?: string
+          id?: string
+          plan_data?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
       water_intake: {
         Row: {
           amount_ml: number
