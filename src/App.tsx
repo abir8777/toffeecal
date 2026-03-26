@@ -14,6 +14,7 @@ const Coach = lazy(() => import("./pages/Coach"));
 const History = lazy(() => import("./pages/History"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Premium = lazy(() => import("./pages/Premium"));
+const MealPlan = lazy(() => import("./pages/MealPlan"));
 const Install = lazy(() => import("./pages/Install"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
