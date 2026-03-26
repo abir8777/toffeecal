@@ -14,6 +14,7 @@ const Coach = lazy(() => import("./pages/Coach"));
 const History = lazy(() => import("./pages/History"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Premium = lazy(() => import("./pages/Premium"));
+const MealPlan = lazy(() => import("./pages/MealPlan"));
 const Install = lazy(() => import("./pages/Install"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -34,6 +35,7 @@ function AppRoutes() {
         <Route path="/log" element={<LogFood />} />
         <Route path="/history" element={<History />} />
         <Route path="/coach" element={<Coach />} />
+        <Route path="/meal-plan" element={<MealPlan />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/premium" element={<Premium />} />
         <Route path="/install" element={<Install />} />
