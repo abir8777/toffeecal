@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CalendarDays, ChefHat, Flame, Loader2, AlertCircle, Save, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -75,9 +75,16 @@ function DayCard({ dayPlan, index }: { dayPlan: DayPlan; index: number }) {
 
 export default function MealPlan() {
   const { user } = useAuth();
-  const { mealPlan, isLoading, isSaving, error, generatePlan, savePlan } = useWeeklyMealPlan();
+  const { mealPlan, isLoading, isLoadingSaved, isSaving, error, generatePlan, savePlan, currentCuisine: savedCuisine } = useWeeklyMealPlan();
   const [authOpen, setAuthOpen] = useState(false);
   const [selectedCuisine, setSelectedCuisine] = useState<string | null>(null);
+
+  // Sync cuisine selector when a saved plan is loaded
+  useEffect(() => {
+    if (savedCuisine && !selectedCuisine) {
+      setSelectedCuisine(savedCuisine);
+    }
+  }, [savedCuisine]);
 
   if (!user) {
     return (
