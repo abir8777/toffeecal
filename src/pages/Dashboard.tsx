@@ -30,7 +30,7 @@ export default function Dashboard() {
     return (
       <AppLayout>
         <div className="p-4 flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4">
-          <img src="/images/toffeecal-logo.png" alt="ToffeeCal" className="h-16 w-16 rounded-2xl" />
+          <img src="/images/toffeecal-logo.webp" alt="ToffeeCal" className="h-16 w-16 rounded-2xl" width="64" height="64" />
           <h1 className="text-2xl font-bold text-foreground">Welcome to toffeecal</h1>
           <p className="text-muted-foreground">Sign in to start tracking your nutrition</p>
           <Button

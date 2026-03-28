@@ -37,7 +37,7 @@ const Install = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background px-6 text-center gap-6">
-      <img src="/images/toffeecal-logo.png" alt="ToffeeCal" className="w-24 h-24 rounded-2xl" />
+      <img src="/images/toffeecal-logo.webp" alt="ToffeeCal" className="w-24 h-24 rounded-2xl" width="96" height="96" />
       <h1 className="text-2xl font-bold text-foreground">Install ToffeeCal</h1>
 
       {installed ? (
