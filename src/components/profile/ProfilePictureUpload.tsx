@@ -48,13 +48,14 @@ export function ProfilePictureUpload({
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
+      // Get signed URL (bucket is private)
+      const { data: signedUrlData, error: signedUrlError } = await supabase.storage
         .from('avatars')
-        .getPublicUrl(fileName);
+        .createSignedUrl(fileName, 60 * 60 * 24 * 365); // 1 year expiry
 
-      // Add cache buster
-      const urlWithCacheBuster = `${publicUrl}?t=${Date.now()}`;
+      if (signedUrlError || !signedUrlData?.signedUrl) throw signedUrlError || new Error('Failed to get URL');
+
+      const urlWithCacheBuster = `${signedUrlData.signedUrl}&t=${Date.now()}`;
 
       onUploadSuccess(urlWithCacheBuster);
       toast.success('Profile picture updated!');
