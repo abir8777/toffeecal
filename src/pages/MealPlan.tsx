@@ -80,16 +80,11 @@ export default function MealPlan() {
   const [selectedCuisine, setSelectedCuisine] = useState<string | null>(null);
 
   // Sync cuisine selector when a saved plan is loaded
-  useState(() => {
+  useEffect(() => {
     if (savedCuisine && !selectedCuisine) {
       setSelectedCuisine(savedCuisine);
     }
-  });
-
-  // Keep cuisine in sync when savedCuisine loads
-  if (savedCuisine && !selectedCuisine) {
-    setSelectedCuisine(savedCuisine);
-  }
+  }, [savedCuisine]);
 
   if (!user) {
     return (
