@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -20,9 +20,40 @@ export interface DayPlan {
 export function useWeeklyMealPlan() {
   const [mealPlan, setMealPlan] = useState<DayPlan[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingSaved, setIsLoadingSaved] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentCuisine, setCurrentCuisine] = useState<string | null>(null);
+
+  // Load saved plan on mount
+  useEffect(() => {
+    let cancelled = false;
+    async function loadSaved() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { setIsLoadingSaved(false); return; }
+
+        const { data, error } = await supabase
+          .from('saved_meal_plans')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (!cancelled && data) {
+          setMealPlan(data.plan_data as unknown as DayPlan[]);
+          setCurrentCuisine(data.cuisine);
+        }
+      } catch (err) {
+        console.error('Failed to load saved plan:', err);
+      } finally {
+        if (!cancelled) setIsLoadingSaved(false);
+      }
+    }
+    loadSaved();
+    return () => { cancelled = true; };
+  }, []);
 
   const generatePlan = useCallback(async (cuisinePreference: string) => {
     setIsLoading(true);
@@ -68,5 +99,5 @@ export function useWeeklyMealPlan() {
     }
   }, [mealPlan, currentCuisine]);
 
-  return { mealPlan, isLoading, isSaving, error, generatePlan, savePlan };
+  return { mealPlan, isLoading, isLoadingSaved, isSaving, error, generatePlan, savePlan, currentCuisine };
 }

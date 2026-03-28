@@ -75,9 +75,21 @@ function DayCard({ dayPlan, index }: { dayPlan: DayPlan; index: number }) {
 
 export default function MealPlan() {
   const { user } = useAuth();
-  const { mealPlan, isLoading, isSaving, error, generatePlan, savePlan } = useWeeklyMealPlan();
+  const { mealPlan, isLoading, isLoadingSaved, isSaving, error, generatePlan, savePlan, currentCuisine: savedCuisine } = useWeeklyMealPlan();
   const [authOpen, setAuthOpen] = useState(false);
   const [selectedCuisine, setSelectedCuisine] = useState<string | null>(null);
+
+  // Sync cuisine selector when a saved plan is loaded
+  useState(() => {
+    if (savedCuisine && !selectedCuisine) {
+      setSelectedCuisine(savedCuisine);
+    }
+  });
+
+  // Keep cuisine in sync when savedCuisine loads
+  if (savedCuisine && !selectedCuisine) {
+    setSelectedCuisine(savedCuisine);
+  }
 
   if (!user) {
     return (
