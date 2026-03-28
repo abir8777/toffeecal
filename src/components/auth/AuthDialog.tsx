@@ -60,7 +60,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
         <div className="p-6">
           <DialogHeader className="text-center mb-6">
             <div className="flex justify-center mb-3">
-              <img src="/images/toffeecal-logo.png" alt="ToffeeCal" className="w-14 h-14 rounded-2xl" />
+              <img src="/images/toffeecal-logo.webp" alt="ToffeeCal" className="w-14 h-14 rounded-2xl" width="56" height="56" />
             </div>
             <DialogTitle className="text-xl font-bold text-foreground">
               Welcome to toffeecal
