@@ -1,3 +1,5 @@
+import { motion } from 'framer-motion';
+
 interface CircularProgressProps {
   percentage: number;
   size?: number;
@@ -28,7 +30,7 @@ export function CircularProgress({
           strokeWidth={strokeWidth}
         />
         {/* Progress circle */}
-        <circle
+        <motion.circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
@@ -37,10 +39,9 @@ export function CircularProgress({
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          style={{
-            transition: 'stroke-dashoffset 1s ease-out',
-          }}
+          initial={{ strokeDashoffset: circumference }}
+          animate={{ strokeDashoffset: offset }}
+          transition={{ duration: 1, ease: "easeOut" }}
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">

@@ -21,20 +21,7 @@ export default defineConfig(({ mode }) => ({
       includeAssets: ["images/toffeecal-logo.png", "images/toffeecal-logo.webp"],
       workbox: {
         navigateFallbackDenylist: [/^\/~oauth/],
-        globPatterns: ["**/*.{js,css,html,ico,png,webp,svg,woff2}"],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/cdn\.gpteng\.co\/.*/i,
-            handler: "CacheFirst",
-            options: {
-              cacheName: "cdn-assets",
-              expiration: {
-                maxEntries: 20,
-                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
-              },
-            },
-          },
-        ],
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
       },
       manifest: {
         name: "ToffeeCal – Smart Calorie Tracker",
@@ -56,8 +43,6 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
-    target: "es2020",
-    cssMinify: "lightningcss",
     rollupOptions: {
       output: {
         manualChunks: {
@@ -74,10 +59,9 @@ export default defineConfig(({ mode }) => ({
           ],
           "vendor-charts": ["recharts"],
           "vendor-motion": ["framer-motion"],
-          "vendor-supabase": ["@supabase/supabase-js"],
-          "vendor-date": ["date-fns"],
         },
       },
     },
   },
 }));
+

@@ -1,8 +1,8 @@
+import { motion } from 'framer-motion';
 import { Lightbulb, RefreshCw } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { memo } from 'react';
 
 interface DailyTipCardProps {
   tip: string | null;
@@ -10,7 +10,7 @@ interface DailyTipCardProps {
   onRefresh: () => void;
 }
 
-export const DailyTipCard = memo(function DailyTipCard({ tip, isLoading, onRefresh }: DailyTipCardProps) {
+export function DailyTipCard({ tip, isLoading, onRefresh }: DailyTipCardProps) {
   if (isLoading) {
     return (
       <Card>
@@ -58,4 +58,4 @@ export const DailyTipCard = memo(function DailyTipCard({ tip, isLoading, onRefre
       </CardContent>
     </Card>
   );
-});
+}

@@ -1,6 +1,8 @@
-import { useState, useMemo } from 'react';
-import { Navigate, Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Navigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { Flame, Plus, TrendingUp, Sparkles } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -23,8 +25,6 @@ export default function Dashboard() {
   const { dailySummary, logs, isLoading: logsLoading, deleteFoodLog } = useFoodLogs();
   const { tip, isLoading: tipLoading, refresh: refreshTip } = useDailyTip();
   const [authOpen, setAuthOpen] = useState(!user);
-
-  const today = useMemo(() => format(new Date(), 'EEEE, MMMM d'), []);
 
   if (!user) {
     return (
@@ -61,12 +61,18 @@ export default function Dashboard() {
     <AppLayout>
       <div className="p-4 space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between animate-fade-in">
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center justify-between"
+        >
           <div>
             <h1 className="text-2xl font-bold text-foreground">
               {profile?.name ? `Hey, ${profile.name}!` : 'Hey there!'} 👋
             </h1>
-            <p className="text-muted-foreground text-sm">{today}</p>
+            <p className="text-muted-foreground text-sm">
+              {format(new Date(), 'EEEE, MMMM d')}
+            </p>
           </div>
           <Link to="/premium">
             <Button variant="outline" size="sm" className="rounded-full gap-1.5">
@@ -74,101 +80,130 @@ export default function Dashboard() {
               Premium
             </Button>
           </Link>
-        </div>
+        </motion.div>
 
         {/* Daily Motivational Tip */}
-        <DailyTipCard tip={tip} isLoading={tipLoading} onRefresh={refreshTip} />
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+        >
+          <DailyTipCard tip={tip} isLoading={tipLoading} onRefresh={refreshTip} />
+        </motion.div>
 
         {/* Calorie Progress Card */}
-        <Card className="overflow-hidden">
-          <CardContent className="p-6">
-            <div className="flex flex-col items-center">
-              {isLoading ? (
-                <Skeleton className="w-48 h-48 rounded-full" />
-              ) : (
-                <CircularProgress percentage={progress} size={192} strokeWidth={14}>
-                  <div className="text-center">
-                    <div className="flex items-center justify-center gap-1 text-accent mb-1">
-                      <Flame className="h-5 w-5" />
-                      <span className="text-sm font-medium">Remaining</span>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.1 }}
+        >
+          <Card className="overflow-hidden">
+            <CardContent className="p-6">
+              <div className="flex flex-col items-center">
+                {isLoading ? (
+                  <Skeleton className="w-48 h-48 rounded-full" />
+                ) : (
+                  <CircularProgress percentage={progress} size={192} strokeWidth={14}>
+                    <div className="text-center">
+                      <div className="flex items-center justify-center gap-1 text-accent mb-1">
+                        <Flame className="h-5 w-5" />
+                        <span className="text-sm font-medium">Remaining</span>
+                      </div>
+                      <div className="text-4xl font-bold text-foreground">
+                        {formatCalories(remaining)}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        of {formatCalories(calorieTarget)} cal
+                      </div>
                     </div>
-                    <div className="text-4xl font-bold text-foreground">
+                  </CircularProgress>
+                )}
+
+                <div className="grid grid-cols-2 gap-4 mt-6 w-full text-center">
+                  <div className="p-3 rounded-xl bg-secondary/50">
+                    <div className="text-2xl font-bold text-foreground">
+                      {formatCalories(consumed)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Consumed</div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-secondary/50">
+                    <div className="text-2xl font-bold text-primary">
                       {formatCalories(remaining)}
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      of {formatCalories(calorieTarget)} cal
-                    </div>
+                    <div className="text-xs text-muted-foreground">Remaining</div>
                   </div>
-                </CircularProgress>
-              )}
-
-              <div className="grid grid-cols-2 gap-4 mt-6 w-full text-center">
-                <div className="p-3 rounded-xl bg-secondary/50">
-                  <div className="text-2xl font-bold text-foreground">
-                    {formatCalories(consumed)}
-                  </div>
-                  <div className="text-xs text-muted-foreground">Consumed</div>
-                </div>
-                <div className="p-3 rounded-xl bg-secondary/50">
-                  <div className="text-2xl font-bold text-primary">
-                    {formatCalories(remaining)}
-                  </div>
-                  <div className="text-xs text-muted-foreground">Remaining</div>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Macro Progress */}
-        <Card>
-          <CardContent className="p-4 space-y-4">
-            <h2 className="font-semibold text-foreground flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-primary" />
-              Macros
-            </h2>
-            {isLoading ? (
-              <div className="space-y-4">
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-full" />
-              </div>
-            ) : (
-              <>
-                <MacroBar
-                  label="Protein"
-                  current={dailySummary.total_protein}
-                  target={macroTargets.protein}
-                  color="protein"
-                />
-                <MacroBar
-                  label="Carbs"
-                  current={dailySummary.total_carbs}
-                  target={macroTargets.carbs}
-                  color="carbs"
-                />
-                <MacroBar
-                  label="Fat"
-                  current={dailySummary.total_fat}
-                  target={macroTargets.fat}
-                  color="fat"
-                />
-              </>
-            )}
-          </CardContent>
-        </Card>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <Card>
+            <CardContent className="p-4 space-y-4">
+              <h2 className="font-semibold text-foreground flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                Macros
+              </h2>
+              {isLoading ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-8 w-full" />
+                  <Skeleton className="h-8 w-full" />
+                  <Skeleton className="h-8 w-full" />
+                </div>
+              ) : (
+                <>
+                  <MacroBar
+                    label="Protein"
+                    current={dailySummary.total_protein}
+                    target={macroTargets.protein}
+                    color="protein"
+                  />
+                  <MacroBar
+                    label="Carbs"
+                    current={dailySummary.total_carbs}
+                    target={macroTargets.carbs}
+                    color="carbs"
+                  />
+                  <MacroBar
+                    label="Fat"
+                    current={dailySummary.total_fat}
+                    target={macroTargets.fat}
+                    color="fat"
+                  />
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Quick Add Button */}
-        <Link to="/log">
-          <Button className="w-full h-14 rounded-xl gradient-primary text-primary-foreground font-semibold text-lg gap-2">
-            <Plus className="h-5 w-5" />
-            Log Food
-          </Button>
-        </Link>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <Link to="/log">
+            <Button className="w-full h-14 rounded-xl gradient-primary text-primary-foreground font-semibold text-lg gap-2">
+              <Plus className="h-5 w-5" />
+              Log Food
+            </Button>
+          </Link>
+        </motion.div>
 
         {/* Today's Meals */}
         {logs && logs.length > 0 && (
-          <div className="space-y-3">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="space-y-3"
+          >
             <h2 className="font-semibold text-foreground">Today's Meals</h2>
             <div className="space-y-3">
               {logs.slice(0, 3).map((log) => (
@@ -186,7 +221,7 @@ export default function Dashboard() {
                 </Link>
               )}
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* Disclaimer */}

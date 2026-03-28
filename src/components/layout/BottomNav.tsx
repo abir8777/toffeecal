@@ -1,7 +1,7 @@
-import { memo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, PlusCircle, History, User, CalendarDays, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
 
 const navItems = [
   { path: '/dashboard', icon: Home, label: 'Home' },
@@ -12,7 +12,7 @@ const navItems = [
   { path: '/profile', icon: User, label: 'Profile' },
 ];
 
-export const BottomNav = memo(function BottomNav() {
+export function BottomNav() {
   const location = useLocation();
 
   return (
@@ -32,7 +32,11 @@ export const BottomNav = memo(function BottomNav() {
               )}
             >
               {isActive && (
-                <div className="absolute inset-0 bg-primary/10 rounded-xl" />
+                <motion.div
+                  layoutId="activeTab"
+                  className="absolute inset-0 bg-primary/10 rounded-xl"
+                  transition={{ type: "spring", duration: 0.5 }}
+                />
               )}
               <Icon className="h-5 w-5 relative z-10" />
               <span className="text-xs font-medium relative z-10">{item.label}</span>
@@ -42,4 +46,4 @@ export const BottomNav = memo(function BottomNav() {
       </div>
     </nav>
   );
-});
+}
