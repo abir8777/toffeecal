@@ -1,12 +1,13 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, PlusCircle, History, User, CalendarDays } from 'lucide-react';
+import { Home, PlusCircle, History, User, CalendarDays, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 
 const navItems = [
   { path: '/dashboard', icon: Home, label: 'Home' },
   { path: '/log', icon: PlusCircle, label: 'Log' },
-  { path: '/meal-plan', icon: CalendarDays, label: 'Meals' },
+  { path: '/coach', icon: MessageCircle, label: 'Coach' },
+  { path: '/meal-plan', icon: CalendarDays, label: 'Plan' },
   { path: '/history', icon: History, label: 'History' },
   { path: '/profile', icon: User, label: 'Profile' },
 ];
