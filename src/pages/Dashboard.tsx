@@ -20,11 +20,29 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useDailyTip } from '@/hooks/useDailyTip';
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const { profile, isLoading: profileLoading } = useProfile();
   const { dailySummary, logs, isLoading: logsLoading, deleteFoodLog } = useFoodLogs();
   const { tip, isLoading: tipLoading, refresh: refreshTip } = useDailyTip();
-  const [authOpen, setAuthOpen] = useState(!user);
+  const [authOpen, setAuthOpen] = useState(false);
+
+  // Close auth dialog when user signs in; open when confirmed unauthenticated
+  useEffect(() => {
+    if (user) {
+      setAuthOpen(false);
+    }
+  }, [user]);
+
+  // Show loading while auth state is being restored (e.g. after OAuth redirect)
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <div className="animate-pulse text-primary">Loading...</div>
+        </div>
+      </AppLayout>
+    );
+  }
 
   if (!user) {
     return (
