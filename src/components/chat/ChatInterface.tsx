@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 
-interface Message {
+export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
@@ -21,18 +21,36 @@ interface Message {
   imageUrl?: string;
 }
 
+export type ChatMode = 'coach' | 'doctor';
+
 interface ChatInterfaceProps {
-  messages: Message[];
+  messages: ChatMessage[];
   isLoading: boolean;
   onSendMessage: (message: string, imageBase64?: string) => void;
   onClearChat: () => void;
+  mode: ChatMode;
 }
+
+const COACH_SUGGESTIONS = [
+  "How can I eat healthier?",
+  "Tips for weight loss",
+  "How much protein do I need?",
+  "Best post-workout meal?",
+];
+
+const DOCTOR_SUGGESTIONS = [
+  "Analyze my skin rash",
+  "What should I eat today?",
+  "Why do I feel tired?",
+  "I have a headache",
+];
 
 export function ChatInterface({
   messages,
   isLoading,
   onSendMessage,
   onClearChat,
+  mode,
 }: ChatInterfaceProps) {
   const [input, setInput] = useState('');
   const [isListening, setIsListening] = useState(false);
@@ -44,6 +62,7 @@ export function ChatInterface({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
+  const isDoctor = mode === 'doctor';
   const speechSupported = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
 
   useEffect(() => {
@@ -55,12 +74,10 @@ export function ChatInterface({
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     if (file.size > 5 * 1024 * 1024) {
       alert('Image must be under 5MB');
       return;
     }
-
     const reader = new FileReader();
     reader.onload = () => {
       const base64 = reader.result as string;
@@ -82,25 +99,20 @@ export function ChatInterface({
       setIsListening(false);
       return;
     }
-
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return;
-
     const recognition = new SpeechRecognition();
     recognition.lang = 'en-US';
     recognition.interimResults = true;
     recognition.continuous = false;
-
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       const transcript = Array.from(event.results)
         .map((result) => result[0].transcript)
         .join('');
       setInput(transcript);
     };
-
     recognition.onend = () => setIsListening(false);
     recognition.onerror = () => setIsListening(false);
-
     recognitionRef.current = recognition;
     recognition.start();
     setIsListening(true);
@@ -111,7 +123,6 @@ export function ChatInterface({
     const text = input.trim() || (pendingImage ? 'What do you see in this image?' : '');
     if (!text && !pendingImage) return;
     if (isLoading) return;
-
     recognitionRef.current?.stop();
     setIsListening(false);
     onSendMessage(text, pendingImage || undefined);
@@ -120,17 +131,27 @@ export function ChatInterface({
     setPendingImagePreview(null);
   };
 
+  const headerTitle = isDoctor ? 'Doc' : 'Coach';
+  const headerSubtitle = isDoctor ? 'AI Health Assistant' : 'Your fitness guide';
+  const HeaderIcon = isDoctor ? Stethoscope : Bot;
+  const AssistantIcon = isDoctor ? Stethoscope : Bot;
+  const placeholder = isListening
+    ? 'Listening...'
+    : isDoctor
+      ? 'Describe your symptoms or upload a photo...'
+      : 'Ask about fitness, diet, or goals...';
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b bg-card">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <Stethoscope className="w-5 h-5 text-primary" />
+            <HeaderIcon className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h2 className="font-semibold text-foreground">Doc</h2>
-            <p className="text-xs text-muted-foreground">AI Health Assistant</p>
+            <h2 className="font-semibold text-foreground">{headerTitle}</h2>
+            <p className="text-xs text-muted-foreground">{headerSubtitle}</p>
           </div>
         </div>
         <Button
@@ -143,12 +164,14 @@ export function ChatInterface({
         </Button>
       </div>
 
-      {/* Medical disclaimer */}
-      <div className="px-4 py-2 bg-accent/50 border-b">
-        <p className="text-xs text-muted-foreground text-center">
-          ⚕️ This AI is not a substitute for professional medical advice, diagnosis, or treatment. Always consult a qualified healthcare provider.
-        </p>
-      </div>
+      {/* Medical disclaimer (Doctor mode only) */}
+      {isDoctor && (
+        <div className="px-4 py-2 bg-accent/50 border-b">
+          <p className="text-xs text-muted-foreground text-center">
+            ⚕️ Not a substitute for professional medical advice. Always consult a qualified healthcare provider.
+          </p>
+        </div>
+      )}
 
       {/* Messages */}
       <ScrollArea className="flex-1 px-4" ref={scrollRef}>
@@ -176,7 +199,7 @@ export function ChatInterface({
                   {message.role === 'user' ? (
                     <User className="w-4 h-4" />
                   ) : (
-                    <Stethoscope className="w-4 h-4" />
+                    <AssistantIcon className="w-4 h-4" />
                   )}
                 </div>
                 <div
@@ -217,13 +240,9 @@ export function ChatInterface({
           </AnimatePresence>
 
           {isLoading && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex gap-3"
-            >
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3">
               <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center">
-                <Stethoscope className="w-4 h-4 text-secondary-foreground" />
+                <AssistantIcon className="w-4 h-4 text-secondary-foreground" />
               </div>
               <div className="bg-muted rounded-2xl rounded-tl-sm px-4 py-3">
                 <div className="flex gap-1">
@@ -237,26 +256,41 @@ export function ChatInterface({
         </div>
       </ScrollArea>
 
-      {/* Quick suggestions */}
-      <div className="px-4 py-2 flex gap-2 overflow-x-auto scrollbar-hide">
-        {[
-          "I have a headache",
-          "Analyze my skin rash",
-          "What should I eat today?",
-          "Tips for better sleep",
-        ].map((suggestion) => (
-          <Button
-            key={suggestion}
-            variant="outline"
-            size="sm"
-            className="flex-shrink-0 text-xs"
-            onClick={() => !isLoading && onSendMessage(suggestion)}
-            disabled={isLoading}
-          >
-            {suggestion}
-          </Button>
-        ))}
-      </div>
+      {/* Quick suggestions (Doctor mode only) */}
+      {isDoctor && (
+        <div className="px-4 py-2 flex gap-2 overflow-x-auto scrollbar-hide">
+          {DOCTOR_SUGGESTIONS.map((suggestion) => (
+            <Button
+              key={suggestion}
+              variant="outline"
+              size="sm"
+              className="flex-shrink-0 text-xs"
+              onClick={() => !isLoading && onSendMessage(suggestion)}
+              disabled={isLoading}
+            >
+              {suggestion}
+            </Button>
+          ))}
+        </div>
+      )}
+
+      {/* Quick suggestions (Coach mode) */}
+      {!isDoctor && (
+        <div className="px-4 py-2 flex gap-2 overflow-x-auto scrollbar-hide">
+          {COACH_SUGGESTIONS.map((suggestion) => (
+            <Button
+              key={suggestion}
+              variant="outline"
+              size="sm"
+              className="flex-shrink-0 text-xs"
+              onClick={() => !isLoading && onSendMessage(suggestion)}
+              disabled={isLoading}
+            >
+              {suggestion}
+            </Button>
+          ))}
+        </div>
+      )}
 
       {/* Pending image preview */}
       {pendingImagePreview && (
@@ -274,73 +308,36 @@ export function ChatInterface({
       )}
 
       {/* Hidden file inputs */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={handleImageSelect}
-      />
-      <input
-        ref={cameraInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-        onChange={handleImageSelect}
-      />
+      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
+      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleImageSelect} />
 
       {/* Input */}
       <form onSubmit={handleSubmit} className="p-4 border-t bg-background">
         <div className="flex gap-2">
-          <Button
-            type="button"
-            size="icon"
-            variant="outline"
-            onClick={() => cameraInputRef.current?.click()}
-            disabled={isLoading}
-            className="flex-shrink-0"
-            title="Take photo"
-          >
-            <Camera className="w-4 h-4" />
-          </Button>
-          <Button
-            type="button"
-            size="icon"
-            variant="outline"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isLoading}
-            className="flex-shrink-0"
-            title="Upload image"
-          >
-            <ImagePlus className="w-4 h-4" />
-          </Button>
+          {isDoctor && (
+            <>
+              <Button type="button" size="icon" variant="outline" onClick={() => cameraInputRef.current?.click()} disabled={isLoading} className="flex-shrink-0" title="Take photo">
+                <Camera className="w-4 h-4" />
+              </Button>
+              <Button type="button" size="icon" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isLoading} className="flex-shrink-0" title="Upload image">
+                <ImagePlus className="w-4 h-4" />
+              </Button>
+            </>
+          )}
           <Input
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={isListening ? "Listening..." : "Describe your symptoms or ask anything..."}
+            placeholder={placeholder}
             disabled={isLoading}
             className="flex-1"
           />
           {speechSupported && (
-            <Button
-              type="button"
-              size="icon"
-              variant={isListening ? "destructive" : "outline"}
-              onClick={toggleListening}
-              disabled={isLoading}
-              className="flex-shrink-0"
-            >
+            <Button type="button" size="icon" variant={isListening ? "destructive" : "outline"} onClick={toggleListening} disabled={isLoading} className="flex-shrink-0">
               {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
             </Button>
           )}
-          <Button
-            type="submit"
-            size="icon"
-            disabled={(!input.trim() && !pendingImage) || isLoading}
-            className="flex-shrink-0"
-          >
+          <Button type="submit" size="icon" disabled={(!input.trim() && !pendingImage) || isLoading} className="flex-shrink-0">
             <Send className="w-4 h-4" />
           </Button>
         </div>
