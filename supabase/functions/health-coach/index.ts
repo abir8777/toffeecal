@@ -36,7 +36,8 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { message, imageBase64 } = body;
+    const { message, imageBase64, mode } = body;
+    const isCoach = mode === "coach";
     let { conversationHistory } = body;
 
     if (!message || typeof message !== "string") {
