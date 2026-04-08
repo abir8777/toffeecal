@@ -143,6 +143,13 @@ export function ChatInterface({
         </Button>
       </div>
 
+      {/* Medical disclaimer */}
+      <div className="px-4 py-2 bg-accent/50 border-b">
+        <p className="text-xs text-muted-foreground text-center">
+          ⚕️ This AI is not a substitute for professional medical advice, diagnosis, or treatment. Always consult a qualified healthcare provider.
+        </p>
+      </div>
+
       {/* Messages */}
       <ScrollArea className="flex-1 px-4" ref={scrollRef}>
         <div className="py-4 space-y-4">
