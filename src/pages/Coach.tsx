@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MessageSquare } from 'lucide-react';
+import { Stethoscope } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ChatInterface } from '@/components/chat/ChatInterface';
@@ -16,9 +16,9 @@ export default function Coach() {
     return (
       <AppLayout>
         <div className="p-4 flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4">
-          <MessageSquare className="h-12 w-12 text-primary" />
-          <h1 className="text-2xl font-bold text-foreground">Health Coach</h1>
-          <p className="text-muted-foreground">Sign in to chat with your AI health coach</p>
+          <Stethoscope className="h-12 w-12 text-primary" />
+          <h1 className="text-2xl font-bold text-foreground">AI Doctor</h1>
+          <p className="text-muted-foreground">Sign in to chat with your AI health assistant</p>
           <Button onClick={() => setAuthOpen(true)} className="gradient-primary text-primary-foreground font-semibold rounded-xl h-12 px-8">
             Sign In
           </Button>

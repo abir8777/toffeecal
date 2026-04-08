@@ -5,7 +5,7 @@ declare global {
     webkitSpeechRecognition: any;
   }
 }
-import { Send, Trash2, Bot, User, Mic, MicOff } from 'lucide-react';
+import { Send, Trash2, Bot, User, Mic, MicOff, Camera, ImagePlus, X, Stethoscope } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -18,12 +18,13 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  imageUrl?: string;
 }
 
 interface ChatInterfaceProps {
   messages: Message[];
   isLoading: boolean;
-  onSendMessage: (message: string) => void;
+  onSendMessage: (message: string, imageBase64?: string) => void;
   onClearChat: () => void;
 }
 
@@ -35,9 +36,13 @@ export function ChatInterface({
 }: ChatInterfaceProps) {
   const [input, setInput] = useState('');
   const [isListening, setIsListening] = useState(false);
+  const [pendingImage, setPendingImage] = useState<string | null>(null);
+  const [pendingImagePreview, setPendingImagePreview] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const speechSupported = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
 
@@ -46,6 +51,30 @@ export function ChatInterface({
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image must be under 5MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      setPendingImage(base64);
+      setPendingImagePreview(base64);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const removePendingImage = () => {
+    setPendingImage(null);
+    setPendingImagePreview(null);
+  };
 
   const toggleListening = () => {
     if (isListening) {
@@ -79,12 +108,16 @@ export function ChatInterface({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (input.trim() && !isLoading) {
-      recognitionRef.current?.stop();
-      setIsListening(false);
-      onSendMessage(input);
-      setInput('');
-    }
+    const text = input.trim() || (pendingImage ? 'What do you see in this image?' : '');
+    if (!text && !pendingImage) return;
+    if (isLoading) return;
+
+    recognitionRef.current?.stop();
+    setIsListening(false);
+    onSendMessage(text, pendingImage || undefined);
+    setInput('');
+    setPendingImage(null);
+    setPendingImagePreview(null);
   };
 
   return (
@@ -93,11 +126,11 @@ export function ChatInterface({
       <div className="flex items-center justify-between px-4 py-3 border-b bg-card">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <Bot className="w-5 h-5 text-primary" />
+            <Stethoscope className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h2 className="font-semibold text-foreground">Coach</h2>
-            <p className="text-xs text-muted-foreground">Your Health Assistant</p>
+            <h2 className="font-semibold text-foreground">Doc</h2>
+            <p className="text-xs text-muted-foreground">AI Health Assistant</p>
           </div>
         </div>
         <Button
@@ -136,7 +169,7 @@ export function ChatInterface({
                   {message.role === 'user' ? (
                     <User className="w-4 h-4" />
                   ) : (
-                    <Bot className="w-4 h-4" />
+                    <Stethoscope className="w-4 h-4" />
                   )}
                 </div>
                 <div
@@ -147,6 +180,13 @@ export function ChatInterface({
                       : 'bg-muted text-foreground rounded-tl-sm'
                   )}
                 >
+                  {message.imageUrl && (
+                    <img
+                      src={message.imageUrl}
+                      alt="Uploaded"
+                      className="rounded-lg mb-2 max-w-full max-h-48 object-cover"
+                    />
+                  )}
                   {message.role === 'assistant' ? (
                     <div className="prose prose-sm dark:prose-invert max-w-none">
                       <ReactMarkdown
@@ -176,7 +216,7 @@ export function ChatInterface({
               className="flex gap-3"
             >
               <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center">
-                <Bot className="w-4 h-4 text-secondary-foreground" />
+                <Stethoscope className="w-4 h-4 text-secondary-foreground" />
               </div>
               <div className="bg-muted rounded-2xl rounded-tl-sm px-4 py-3">
                 <div className="flex gap-1">
@@ -193,10 +233,10 @@ export function ChatInterface({
       {/* Quick suggestions */}
       <div className="px-4 py-2 flex gap-2 overflow-x-auto scrollbar-hide">
         {[
-          "How can I eat healthier?",
-          "Tips for weight loss",
-          "How much protein do I need?",
+          "I have a headache",
+          "Analyze my skin rash",
           "What should I eat today?",
+          "Tips for better sleep",
         ].map((suggestion) => (
           <Button
             key={suggestion}
@@ -211,14 +251,68 @@ export function ChatInterface({
         ))}
       </div>
 
+      {/* Pending image preview */}
+      {pendingImagePreview && (
+        <div className="px-4 py-2">
+          <div className="relative inline-block">
+            <img src={pendingImagePreview} alt="Preview" className="h-20 rounded-lg object-cover" />
+            <button
+              onClick={removePendingImage}
+              className="absolute -top-2 -right-2 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Hidden file inputs */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleImageSelect}
+      />
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={handleImageSelect}
+      />
+
       {/* Input */}
       <form onSubmit={handleSubmit} className="p-4 border-t bg-background">
         <div className="flex gap-2">
+          <Button
+            type="button"
+            size="icon"
+            variant="outline"
+            onClick={() => cameraInputRef.current?.click()}
+            disabled={isLoading}
+            className="flex-shrink-0"
+            title="Take photo"
+          >
+            <Camera className="w-4 h-4" />
+          </Button>
+          <Button
+            type="button"
+            size="icon"
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isLoading}
+            className="flex-shrink-0"
+            title="Upload image"
+          >
+            <ImagePlus className="w-4 h-4" />
+          </Button>
           <Input
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={isListening ? "Listening..." : "Ask your health coach..."}
+            placeholder={isListening ? "Listening..." : "Describe your symptoms or ask anything..."}
             disabled={isLoading}
             className="flex-1"
           />
@@ -237,7 +331,7 @@ export function ChatInterface({
           <Button
             type="submit"
             size="icon"
-            disabled={!input.trim() || isLoading}
+            disabled={(!input.trim() && !pendingImage) || isLoading}
             className="flex-shrink-0"
           >
             <Send className="w-4 h-4" />

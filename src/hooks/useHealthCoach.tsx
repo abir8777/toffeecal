@@ -6,6 +6,7 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  imageUrl?: string;
 }
 
 export function useHealthCoach() {
@@ -13,13 +14,13 @@ export function useHealthCoach() {
     {
       id: 'welcome',
       role: 'assistant',
-      content: "Hi! I'm Coach, your personal health assistant! 🌟 I'm here to help you with nutrition advice, fitness tips, and motivation on your wellness journey. How can I help you today?",
+      content: "Hi! I'm Doc, your AI health assistant! 🩺 I can help with health questions, nutrition advice, fitness tips, and even analyze photos of skin concerns or meals. How can I help you today?",
       timestamp: new Date(),
     },
   ]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const sendMessage = useCallback(async (content: string) => {
+  const sendMessage = useCallback(async (content: string, imageBase64?: string) => {
     if (!content.trim() || isLoading) return;
 
     const userMessage: Message = {
@@ -27,13 +28,13 @@ export function useHealthCoach() {
       role: 'user',
       content: content.trim(),
       timestamp: new Date(),
+      imageUrl: imageBase64,
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
 
     try {
-      // Build conversation history (exclude the welcome message for API)
       const conversationHistory = messages
         .filter((m) => m.id !== 'welcome')
         .map((m) => ({
@@ -45,6 +46,7 @@ export function useHealthCoach() {
         body: {
           message: content.trim(),
           conversationHistory,
+          imageBase64: imageBase64 || undefined,
         },
       });
 
@@ -79,7 +81,7 @@ export function useHealthCoach() {
       {
         id: 'welcome',
         role: 'assistant',
-        content: "Hi! I'm Coach, your personal health assistant! 🌟 I'm here to help you with nutrition advice, fitness tips, and motivation on your wellness journey. How can I help you today?",
+        content: "Hi! I'm Doc, your AI health assistant! 🩺 I can help with health questions, nutrition advice, fitness tips, and even analyze photos of skin concerns or meals. How can I help you today?",
         timestamp: new Date(),
       },
     ]);

@@ -1,28 +1,18 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const ALLOWED_ORIGINS = [
-  "https://toffeecal.lovable.app",
-  "https://id-preview--53cdf1c6-b899-4dfb-83ea-5b11c1ba35e8.lovable.app",
-];
-
-function getCorsHeaders(req: Request) {
-  const origin = req.headers.get("Origin") || "";
-  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-  return {
-    "Access-Control-Allow-Origin": allowedOrigin,
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  };
-}
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
 
 serve(async (req) => {
-  const corsHeaders = getCorsHeaders(req);
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Authenticate first
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
@@ -45,14 +35,13 @@ serve(async (req) => {
       );
     }
 
-    // Now validate inputs
     const body = await req.json();
-    const { message } = body;
+    const { message, imageBase64 } = body;
     let { conversationHistory } = body;
 
     if (!message || typeof message !== "string") {
       return new Response(
-        JSON.stringify({ error: "Message is required and must be a string" }),
+        JSON.stringify({ error: "Message is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -64,38 +53,25 @@ serve(async (req) => {
     }
 
     if (conversationHistory && !Array.isArray(conversationHistory)) {
-      return new Response(
-        JSON.stringify({ error: "Invalid conversation history format" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      conversationHistory = [];
     }
     if (conversationHistory && conversationHistory.length > 50) {
       conversationHistory = conversationHistory.slice(-50);
     }
-    if (conversationHistory) {
-      for (const msg of conversationHistory) {
-        if (!msg.role || !msg.content || typeof msg.content !== "string") {
-          return new Response(
-            JSON.stringify({ error: "Invalid message format in conversation history" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-      }
-    }
 
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) {
-      console.error("GEMINI_API_KEY is not configured");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      console.error("LOVABLE_API_KEY is not configured");
       throw new Error("Service configuration error");
     }
 
+    // Fetch user context
     const { data: profile } = await supabase
       .from("profiles")
       .select("*")
       .eq("user_id", user.id)
       .single();
 
-    // Get recent food logs for context
     const { data: recentFoodLogs } = await supabase
       .from("food_logs")
       .select("*")
@@ -103,7 +79,6 @@ serve(async (req) => {
       .order("logged_at", { ascending: false })
       .limit(10);
 
-    // Get today's water intake
     const today = new Date().toISOString().split("T")[0];
     const { data: waterIntake } = await supabase
       .from("water_intake")
@@ -111,10 +86,10 @@ serve(async (req) => {
       .eq("user_id", user.id)
       .gte("logged_at", today);
 
-    const totalWater = waterIntake?.reduce((sum, w) => sum + w.amount_ml, 0) || 0;
+    const totalWater = waterIntake?.reduce((sum: number, w: any) => sum + w.amount_ml, 0) || 0;
 
-    // Build user context
-    const userContext = profile ? `
+    const userContext = profile
+      ? `
 User Profile:
 - Name: ${profile.name || "Not set"}
 - Age: ${profile.age || "Not set"}
@@ -128,53 +103,123 @@ User Profile:
 - Today's Water Intake: ${totalWater} ml
 
 Recent Food Logs (last 10 meals):
-${recentFoodLogs?.map(log => `- ${log.food_name}: ${log.calories} kcal (${log.meal_type})`).join("\n") || "No recent logs"}
-` : "User profile not available.";
+${recentFoodLogs?.map((log: any) => `- ${log.food_name}: ${log.calories} kcal (${log.meal_type})`).join("\n") || "No recent logs"}
+`
+      : "User profile not available.";
 
-    const systemPrompt = `You are a friendly, professional health coach AI assistant named "Coach". You provide personalized nutrition, fitness, and wellness advice.
+    const systemPrompt = `You are an advanced AI Doctor integrated into a health and fitness mobile application named "Doc".
+Your role is to provide highly accurate, evidence-based, and personalized guidance for general health, symptoms, nutrition, and fitness using both user input and uploaded images.
+You are NOT a replacement for a licensed medical professional. You must prioritize user safety at all times.
 
-IMPORTANT GUIDELINES:
-1. Be encouraging, supportive, and non-judgmental.
-2. Provide practical, actionable advice tailored to the user's goals.
-3. Consider the user's profile, recent meals, and water intake when giving advice.
-4. Focus on sustainable, healthy habits rather than extreme measures.
-5. Never provide medical diagnoses or prescribe medications.
-6. If asked about medical conditions, recommend consulting a healthcare professional.
-7. Keep responses concise but helpful (2-3 paragraphs max).
-8. Use emojis sparingly to keep the tone friendly.
-9. Be knowledgeable about Indian foods and cuisines.
-10. Celebrate small wins and progress.
+FEATURES YOU SUPPORT:
+
+1. CHAT-BASED CONSULTATION
+- Users can ask health-related questions (symptoms, diet, fitness, general concerns).
+- Respond conversationally, clearly, and professionally.
+- Ask follow-up questions when needed to better understand symptoms.
+
+2. IMAGE ANALYSIS (PHOTO UPLOAD / CAMERA)
+- Users can upload or capture images (e.g., skin issues, meals, visible symptoms).
+- Analyze the image and describe what you observe.
+- Suggest possible common conditions based on visible patterns.
+- NEVER provide a definitive diagnosis.
+- Always include uncertainty and recommend professional consultation if needed.
+
+CORE PRINCIPLES:
+
+ACCURACY & SCIENCE
+- Base all responses on established medical and health knowledge.
+- Do NOT hallucinate or invent facts.
+- If uncertain, clearly say so.
+
+SAFETY FIRST
+- Never diagnose serious conditions with certainty.
+- Never prescribe medication.
+- If symptoms suggest emergency (e.g., chest pain, breathing difficulty, severe injury):
+  → Immediately advise seeking urgent medical care.
+
+HONESTY & UNCERTAINTY
+- Use phrases like: "This could be…" "It may indicate…" "I'm not fully certain based on this information…"
+- Avoid absolute claims.
+
+PERSONALIZATION
+- Use available user data (calories, macros, logged meals, activity level).
+- Tailor nutrition and fitness advice accordingly.
+
+IMAGE ANALYSIS RULES:
+When a user uploads an image:
+1. Describe what you see clearly (color, shape, size, texture, location if applicable)
+2. Provide possible explanations (list 2–4 common possibilities)
+3. Assess severity (mild / moderate / potentially serious)
+4. Give actionable advice (basic care steps)
+5. Add safety disclaimer (encourage consulting a doctor for confirmation)
+
+Structure for image analysis:
+- **Observation**
+- **Possible causes**
+- **What you can do now**
+- **When to see a doctor**
+
+CHAT RESPONSE STRUCTURE:
+For every response:
+- Direct answer
+- Possible causes or explanation
+- Actionable steps (2–4 bullets)
+- Safety note if needed
+
+Keep responses clear, concise, and helpful.
+Be knowledgeable about Indian foods and cuisines.
+
+TONE:
+- Friendly, calm, and professional
+- Reassuring but not overconfident
+- Avoid technical jargon unless necessary
+
+PROHIBITED ACTIONS:
+- Do NOT claim 100% accuracy
+- Do NOT replace real doctors
+- Do NOT provide prescriptions
+- Do NOT make definitive diagnoses
 
 ${userContext}
 
-Remember: You're a supportive coach, not a doctor. Focus on general wellness, nutrition tips, motivation, and healthy lifestyle advice.`;
+Remember: You're a supportive AI health assistant, not a doctor. Focus on general wellness, nutrition tips, motivation, symptom guidance, and healthy lifestyle advice. Always recommend consulting a healthcare professional for serious concerns.`;
 
-    // Build messages array with conversation history
-    const messages: any[] = [
-      { role: "system", content: systemPrompt },
-    ];
+    // Build messages
+    const messages: any[] = [{ role: "system", content: systemPrompt }];
 
-    // Add conversation history
     if (conversationHistory && Array.isArray(conversationHistory)) {
       for (const msg of conversationHistory) {
-        messages.push({
-          role: msg.role,
-          content: msg.content,
-        });
+        if (msg.role && msg.content) {
+          messages.push({ role: msg.role, content: msg.content });
+        }
       }
     }
 
-    // Add the new user message
-    messages.push({ role: "user", content: message });
+    // Build user message content (text + optional image)
+    if (imageBase64 && typeof imageBase64 === "string") {
+      messages.push({
+        role: "user",
+        content: [
+          { type: "text", text: message },
+          {
+            type: "image_url",
+            image_url: { url: imageBase64 },
+          },
+        ],
+      });
+    } else {
+      messages.push({ role: "user", content: message });
+    }
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`, {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${GEMINI_API_KEY}`,
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gemini-2.5-flash",
+        model: "google/gemini-2.5-flash",
         messages,
       }),
     });
@@ -193,14 +238,14 @@ Remember: You're a supportive coach, not a doctor. Focus on general wellness, nu
         );
       }
       console.error("AI gateway error", { status: response.status });
-      throw new Error("Failed to get response from health coach");
+      throw new Error("Failed to get response from AI Doctor");
     }
 
     const data = await response.json();
     const reply = data.choices?.[0]?.message?.content;
 
     if (!reply) {
-      throw new Error("No response from health coach");
+      throw new Error("No response from AI Doctor");
     }
 
     return new Response(JSON.stringify({ reply }), {
@@ -209,7 +254,7 @@ Remember: You're a supportive coach, not a doctor. Focus on general wellness, nu
   } catch (error) {
     console.error("health-coach error:", error);
     return new Response(
-      JSON.stringify({ error: "An error occurred with the health coach. Please try again." }),
+      JSON.stringify({ error: "An error occurred with the AI Doctor. Please try again." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
