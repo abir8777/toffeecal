@@ -12,18 +12,22 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 function ModeToggle({ mode, onChange }: { mode: ChatMode; onChange: (m: ChatMode) => void }) {
   return (
-    <div className="px-4 pt-3 pb-1">
-      <div className="flex rounded-full bg-muted p-1 relative">
-        <motion.div
-          className="absolute top-1 bottom-1 rounded-full bg-primary"
-          initial={false}
-          animate={{ left: mode === 'coach' ? '4px' : '50%', width: 'calc(50% - 4px)' }}
-          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+    <div className="px-4 pt-3 pb-1 w-full flex-shrink-0" style={{ minHeight: 48 }}>
+      <div className="flex rounded-full bg-muted p-1 relative overflow-hidden w-full">
+        {/* Animated highlight pill */}
+        <div
+          className="absolute top-1 bottom-1 rounded-full bg-primary transition-transform duration-300 ease-in-out"
+          style={{
+            width: 'calc(50% - 4px)',
+            left: 4,
+            transform: mode === 'doctor' ? 'translateX(calc(100% + 4px))' : 'translateX(0)',
+          }}
         />
         <button
+          type="button"
           onClick={() => onChange('coach')}
           className={cn(
-            'relative z-10 flex-1 py-2 text-sm font-semibold rounded-full text-center transition-colors',
+            'relative z-10 flex-1 py-2 text-sm font-semibold rounded-full text-center transition-colors whitespace-nowrap',
             mode === 'coach' ? 'text-primary-foreground' : 'text-muted-foreground'
           )}
         >
@@ -31,9 +35,10 @@ function ModeToggle({ mode, onChange }: { mode: ChatMode; onChange: (m: ChatMode
           Coach
         </button>
         <button
+          type="button"
           onClick={() => onChange('doctor')}
           className={cn(
-            'relative z-10 flex-1 py-2 text-sm font-semibold rounded-full text-center transition-colors',
+            'relative z-10 flex-1 py-2 text-sm font-semibold rounded-full text-center transition-colors whitespace-nowrap',
             mode === 'doctor' ? 'text-primary-foreground' : 'text-muted-foreground'
           )}
         >
