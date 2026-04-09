@@ -33,29 +33,33 @@ export function BottomNav() {
               to={item.path}
               className={cn(
                 "flex flex-col items-center justify-center gap-1 px-4 py-2 rounded-xl transition-colors relative",
-                isActive ? "text-primary" : "text-muted-foreground"
+                isActive ? "text-primary" : "text-muted-foreground",
+                isCoachTab && isDoctor && "text-destructive/80"
               )}
             >
               {isActive && (
                 <motion.div
                   layoutId="activeTab"
-                  className="absolute inset-0 bg-primary/10 rounded-xl"
+                  className={cn(
+                    "absolute inset-0 rounded-xl",
+                    isCoachTab && isDoctor ? "bg-destructive/10" : "bg-primary/10"
+                  )}
                   transition={{ type: "spring", duration: 0.5 }}
                 />
               )}
               <AnimatePresence mode="wait">
                 <motion.div
                   key={isCoachTab ? mode : item.label}
-                  initial={isCoachTab ? { rotateY: 90, opacity: 0 } : false}
-                  animate={{ rotateY: 0, opacity: 1 }}
-                  exit={isCoachTab ? { rotateY: -90, opacity: 0 } : undefined}
-                  transition={{ duration: 0.25 }}
+                  initial={isCoachTab ? { rotateY: 90, opacity: 0, scale: 0.6 } : false}
+                  animate={{ rotateY: 0, opacity: 1, scale: 1 }}
+                  exit={isCoachTab ? { rotateY: -90, opacity: 0, scale: 0.6 } : undefined}
+                  transition={{ duration: 0.3, type: "spring", stiffness: 300 }}
                   className="relative z-10"
                 >
-                  <Icon className="h-5 w-5" />
+                  <Icon className={cn("h-5 w-5", isCoachTab && isDoctor && "text-destructive/80")} />
                 </motion.div>
               </AnimatePresence>
-              <span className="text-xs font-medium relative z-10">{label}</span>
+              <span className={cn("text-xs font-medium relative z-10", isCoachTab && isDoctor && "text-destructive/80")}>{label}</span>
             </Link>
           );
         })}
