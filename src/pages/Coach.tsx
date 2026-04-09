@@ -6,6 +6,7 @@ import { ChatInterface, ChatMode } from '@/components/chat/ChatInterface';
 import { AuthDialog } from '@/components/auth/AuthDialog';
 import { useAuth } from '@/hooks/useAuth';
 import { useHealthCoach } from '@/hooks/useHealthCoach';
+import { useCoachMode } from '@/contexts/CoachModeContext';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -46,7 +47,13 @@ function ModeToggle({ mode, onChange }: { mode: ChatMode; onChange: (m: ChatMode
 export default function Coach() {
   const { user } = useAuth();
   const { messages, isLoading, sendMessage, clearChat, mode, switchMode } = useHealthCoach();
+  const { setMode: setGlobalMode } = useCoachMode();
   const [authOpen, setAuthOpen] = useState(false);
+
+  const handleSwitchMode = (m: ChatMode) => {
+    switchMode(m);
+    setGlobalMode(m);
+  };
 
   if (!user) {
     return (
@@ -67,7 +74,7 @@ export default function Coach() {
   return (
     <AppLayout>
       <div className="h-[calc(100vh-6rem)] flex flex-col">
-        <ModeToggle mode={mode} onChange={switchMode} />
+        <ModeToggle mode={mode} onChange={handleSwitchMode} />
         <AnimatePresence mode="wait">
           <motion.div
             key={mode}
