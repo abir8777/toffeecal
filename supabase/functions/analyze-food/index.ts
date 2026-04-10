@@ -119,9 +119,9 @@ serve(async (req) => {
 
     console.info("analyze-food request received", { hasText: !!sanitizedText, hasImage: !!image });
 
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) {
-      console.error("GEMINI_API_KEY is not configured");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      console.error("LOVABLE_API_KEY is not configured");
       throw new Error("Service configuration error");
     }
 
