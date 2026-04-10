@@ -54,8 +54,8 @@ serve(async (req) => {
       );
     }
 
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) {
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
       throw new Error("Service configuration error");
     }
 
@@ -108,14 +108,14 @@ Rules:
 - Keep descriptions to 1 sentence
 - Return 7 days (Monday through Sunday)`;
 
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${GEMINI_API_KEY}`,
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gemini-2.5-flash",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: "You are a professional nutritionist. Return only valid JSON, no markdown." },
           { role: "user", content: prompt },
@@ -124,13 +124,15 @@ Rules:
     });
 
     if (!response.ok) {
+      const errBody = await response.text();
+      console.error("AI gateway error:", response.status, errBody);
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: "Too many requests. Please try again in a moment." }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      throw new Error("Failed to generate meal plan");
+      throw new Error(`AI gateway returned ${response.status}: ${errBody}`);
     }
 
     const data = await response.json();
