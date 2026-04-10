@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const ALLOWED_ORIGINS = [
   "https://toffeecal.lovable.app",
   "https://id-preview--53cdf1c6-b899-4dfb-83ea-5b11c1ba35e8.lovable.app",
+  "https://53cdf1c6-b899-4dfb-83ea-5b11c1ba35e8.lovableproject.com",
 ];
 
 function getCorsHeaders(req: Request) {
@@ -13,6 +14,8 @@ function getCorsHeaders(req: Request) {
     "Access-Control-Allow-Origin": allowedOrigin,
     "Access-Control-Allow-Headers":
       "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    Vary: "Origin",
   };
 }
 
