@@ -190,15 +190,15 @@ Do not include any text before or after the JSON. Only output the JSON object.`;
     
 
     const response = await fetchWithRetry(
-      `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`,
+      "https://ai.gateway.lovable.dev/v1/chat/completions",
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${GEMINI_API_KEY}`,
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gemini-2.5-flash",
+          model: "google/gemini-2.5-flash",
           messages,
         }),
       },
