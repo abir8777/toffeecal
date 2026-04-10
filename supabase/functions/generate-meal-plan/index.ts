@@ -124,13 +124,15 @@ Rules:
     });
 
     if (!response.ok) {
+      const errBody = await response.text();
+      console.error("AI gateway error:", response.status, errBody);
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: "Too many requests. Please try again in a moment." }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      throw new Error("Failed to generate meal plan");
+      throw new Error(`AI gateway returned ${response.status}: ${errBody}`);
     }
 
     const data = await response.json();
