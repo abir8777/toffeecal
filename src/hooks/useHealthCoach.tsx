@@ -2,6 +2,8 @@ import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { ChatMessage, ChatMode } from '@/components/chat/ChatInterface';
 
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/health-coach`;
+
 const WELCOME_COACH: ChatMessage = {
   id: 'welcome',
   role: 'assistant',
@@ -51,29 +53,95 @@ export function useHealthCoach() {
     setIsLoading(true);
 
     try {
+      // Only send the last few turns to keep latency low
       const conversationHistory = messages
         .filter((m) => m.id !== 'welcome')
+        .slice(-6)
         .map((m) => ({ role: m.role, content: m.content }));
 
-      const { data, error } = await supabase.functions.invoke('health-coach', {
-        body: {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      const resp = await fetch(CHAT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({
           message: content.trim(),
           conversationHistory,
           imageBase64: imageBase64 || undefined,
           mode,
-        },
+        }),
       });
 
-      if (error) throw new Error(error.message || 'Failed to get response');
+      if (!resp.ok || !resp.body) {
+        let errMsg = 'Failed to get response';
+        try {
+          const j = await resp.json();
+          errMsg = j.error || errMsg;
+        } catch { /* ignore */ }
+        throw new Error(errMsg);
+      }
 
-      const assistantMessage: ChatMessage = {
-        id: `assistant-${Date.now()}`,
-        role: 'assistant',
-        content: data.reply || data.error || "I'm sorry, I couldn't process that. Please try again.",
-        timestamp: new Date(),
-      };
+      const assistantId = `assistant-${Date.now()}`;
+      // Insert empty assistant message we will progressively fill
+      setMessages((prev) => [
+        ...prev,
+        { id: assistantId, role: 'assistant', content: '', timestamp: new Date() },
+      ]);
 
-      setMessages((prev) => [...prev, assistantMessage]);
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let textBuffer = '';
+      let assistantContent = '';
+      let streamDone = false;
+
+      while (!streamDone) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        textBuffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex: number;
+        while ((newlineIndex = textBuffer.indexOf('\n')) !== -1) {
+          let line = textBuffer.slice(0, newlineIndex);
+          textBuffer = textBuffer.slice(newlineIndex + 1);
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          if (line.startsWith(':') || line.trim() === '') continue;
+          if (!line.startsWith('data: ')) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === '[DONE]') {
+            streamDone = true;
+            break;
+          }
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const delta = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (delta) {
+              assistantContent += delta;
+              setMessages((prev) =>
+                prev.map((m) => (m.id === assistantId ? { ...m, content: assistantContent } : m))
+              );
+            }
+          } catch {
+            textBuffer = line + '\n' + textBuffer;
+            break;
+          }
+        }
+      }
+
+      if (!assistantContent) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId
+              ? { ...m, content: "I'm sorry, I couldn't process that. Please try again." }
+              : m
+          )
+        );
+      }
     } catch (error) {
       console.error('Health coach error:', error);
       setMessages((prev) => [
