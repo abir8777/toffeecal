@@ -7,18 +7,30 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const jsonResponse = (body: Record<string, unknown>, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
+const gatewayFallback = (mode: string | undefined) => {
+  const isCoach = mode === "coach";
+  return isCoach
+    ? "I'm having a brief AI service hiccup, but I'm still here. Keep your next step simple: hydrate, choose a protein-rich meal, and log what you eat so we can stay on track."
+    : "I'm having a brief AI service hiccup right now. If this is urgent or worsening, please seek medical care immediately; otherwise, try again in a moment and consult a qualified clinician for personal medical advice.";
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let requestMode: string | undefined;
+
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "Authentication required" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ error: "Authentication required" }, 401);
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -29,28 +41,20 @@ serve(async (req) => {
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      return new Response(
-        JSON.stringify({ error: "User not authenticated" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ error: "User not authenticated" }, 401);
     }
 
     const body = await req.json();
     const { message, imageBase64, mode } = body;
+    requestMode = mode;
     const isCoach = mode === "coach";
     let { conversationHistory } = body;
 
     if (!message || typeof message !== "string") {
-      return new Response(
-        JSON.stringify({ error: "Message is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ error: "Message is required" }, 400);
     }
     if (message.length > 2000) {
-      return new Response(
-        JSON.stringify({ error: "Message too long (max 2000 characters)" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ error: "Message too long (max 2000 characters)" }, 400);
     }
 
     if (conversationHistory && !Array.isArray(conversationHistory)) {
@@ -64,7 +68,7 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       console.error("LOVABLE_API_KEY is not configured");
-      throw new Error("Service configuration error");
+      return jsonResponse({ message: gatewayFallback(mode), fallback: true, reason: "missing_ai_key" });
     }
 
     // Fetch minimal user context in parallel (skip food logs & water for speed)
@@ -121,9 +125,7 @@ serve(async (req) => {
       messages.push({ role: "user", content: message });
     }
 
-    const fallbackReply = isCoach
-      ? "I'm having a brief AI service hiccup, but I'm still here. Keep your next step simple: hydrate, choose a protein-rich meal, and log what you eat so we can stay on track."
-      : "I'm having a brief AI service hiccup right now. If this is urgent or worsening, please seek medical care immediately; otherwise, try again in a moment and consult a qualified clinician for personal medical advice.";
+    const fallbackReply = gatewayFallback(mode);
 
     const callAi = (model: string) =>
       fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -144,40 +146,38 @@ serve(async (req) => {
       ? ["google/gemini-2.5-flash"]
       : ["google/gemini-3-flash-preview", "google/gemini-2.5-flash-lite"];
 
-    let response = await callAi(models[0]);
-    if (!response.ok && response.status >= 500 && models[1]) {
+    let response: Response | null = null;
+    for (const model of models) {
+      try {
+        response = await callAi(model);
+      } catch (error) {
+        console.error("AI gateway fetch failed", { model, error });
+        continue;
+      }
+
+      if (response.ok && response.body) break;
+
+      const status = response.status;
       const errText = await response.text().catch(() => "");
-      console.error("AI gateway primary model error", { status: response.status, body: errText });
-      response = await callAi(models[1]);
+      console.error("AI gateway model error", { model, status, body: errText });
+
+      if (status === 429 || status === 402 || status < 500) break;
     }
 
-    if (!response.ok || !response.body) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Too many requests right now. Please try again in a moment! 😊" }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+    if (!response || !response.ok || !response.body) {
+      const status = response?.status || 503;
+      if (status === 429) {
+        return jsonResponse({ error: "Too many requests right now. Please try again in a moment! 😊" }, 429);
       }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI credits exhausted. Please add credits to continue." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      const errText = await response.text().catch(() => "");
-      console.error("AI gateway error", { status: response.status, body: errText });
-
-      if (response.status >= 500) {
-        return new Response(
-          JSON.stringify({ message: fallbackReply, fallback: true }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+      if (status === 402) {
+        return jsonResponse({ error: "AI credits exhausted. Please add credits to continue." }, 402);
       }
 
-      return new Response(
-        JSON.stringify({ error: `AI service unavailable (${response.status}). Please try again.` }),
-        { status: response.status || 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      if (status >= 500 || !response?.body) {
+        return jsonResponse({ message: fallbackReply, fallback: true, reason: "ai_service_unavailable" });
+      }
+
+      return jsonResponse({ message: fallbackReply, fallback: true, reason: "ai_response_unavailable" });
     }
 
     // Stream SSE directly back to the client
@@ -186,9 +186,6 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error("health-coach error:", error);
-    return new Response(
-      JSON.stringify({ error: "An error occurred with the AI Doctor. Please try again." }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return jsonResponse({ message: gatewayFallback(requestMode), fallback: true, reason: "function_error" });
   }
 });

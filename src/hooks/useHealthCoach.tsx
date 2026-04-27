@@ -81,7 +81,14 @@ export function useHealthCoach() {
         let errMsg = 'Failed to get response';
         try {
           const j = await resp.json();
-          errMsg = j.error || errMsg;
+          if (j.fallback && j.message) {
+            setMessages((prev) => [
+              ...prev,
+              { id: `fallback-${Date.now()}`, role: 'assistant', content: j.message, timestamp: new Date() },
+            ]);
+            return;
+          }
+          errMsg = j.error || j.message || errMsg;
         } catch { /* ignore */ }
         throw new Error(errMsg);
       }
@@ -100,6 +107,13 @@ export function useHealthCoach() {
           setMessages((prev) => [
             ...prev,
             { id: `fallback-${Date.now()}`, role: 'assistant', content: serverMsg, timestamp: new Date() },
+          ]);
+          return;
+        }
+        if (serverMsg) {
+          setMessages((prev) => [
+            ...prev,
+            { id: `notice-${Date.now()}`, role: 'assistant', content: serverMsg, timestamp: new Date() },
           ]);
           return;
         }
@@ -191,7 +205,9 @@ export function useHealthCoach() {
         {
           id: `error-${Date.now()}`,
           role: 'assistant',
-          content: "I'm having trouble connecting right now. Please try again in a moment! 🙏",
+          content: mode === 'coach'
+            ? "I'm having trouble connecting right now, but don't stop here: drink water, choose one protein-rich meal, and try again in a moment. 🙏"
+            : "I'm having trouble connecting right now. If this is urgent or worsening, please seek medical care immediately; otherwise, try again in a moment. 🙏",
           timestamp: new Date(),
         },
       ]);
