@@ -25,6 +25,8 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let requestMode: string | undefined;
+
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
@@ -44,6 +46,7 @@ serve(async (req) => {
 
     const body = await req.json();
     const { message, imageBase64, mode } = body;
+    requestMode = mode;
     const isCoach = mode === "coach";
     let { conversationHistory } = body;
 
@@ -163,10 +166,10 @@ serve(async (req) => {
 
     if (!response || !response.ok || !response.body) {
       const status = response?.status || 503;
-      if (response.status === 429) {
+      if (status === 429) {
         return jsonResponse({ error: "Too many requests right now. Please try again in a moment! 😊" }, 429);
       }
-      if (response.status === 402) {
+      if (status === 402) {
         return jsonResponse({ error: "AI credits exhausted. Please add credits to continue." }, 402);
       }
 
@@ -183,9 +186,6 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error("health-coach error:", error);
-    return new Response(
-      JSON.stringify({ error: "An error occurred with the AI Doctor. Please try again." }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return jsonResponse({ message: gatewayFallback(requestMode), fallback: true, reason: "function_error" });
   }
 });
