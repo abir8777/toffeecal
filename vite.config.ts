@@ -20,7 +20,14 @@ export default defineConfig(({ mode }) => ({
       registerType: "autoUpdate",
       includeAssets: ["images/toffeecal-logo.png", "images/toffeecal-logo.webp"],
       workbox: {
-        navigateFallbackDenylist: [/^\/~oauth/],
+        skipWaiting: true,
+        clientsClaim: true,
+        navigateFallbackDenylist: [
+          /^\/~oauth/,
+          /^\/auth/,
+          /[?&](code|state|error)=/,
+          /#.*(access_token|id_token|state)=/,
+        ],
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
       },
       manifest: {
