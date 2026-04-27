@@ -141,9 +141,10 @@ Current time: ${new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute
     });
   } catch (error) {
     console.error("daily-tip error:", error);
+    const fallback = "✨ Welcome back! Aim for a balanced meal, drink water, and move your body a little today.";
     return new Response(
-      JSON.stringify({ error: "An error occurred while generating your daily tip. Please try again." }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ tip: fallback, fallback: true }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
