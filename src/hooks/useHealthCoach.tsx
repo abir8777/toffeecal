@@ -86,14 +86,23 @@ export function useHealthCoach() {
         throw new Error(errMsg);
       }
 
-      // If the server returned JSON instead of a stream (e.g. error fallback), handle it
+      // If the server returned JSON instead of a stream, render safe fallbacks and only throw real errors
       const contentType = resp.headers.get('content-type') || '';
       if (!contentType.includes('text/event-stream')) {
         let serverMsg = '';
+        let isFallback = false;
         try {
           const j = await resp.json();
           serverMsg = j.error || j.message || '';
+          isFallback = Boolean(j.fallback);
         } catch { /* ignore */ }
+        if (isFallback && serverMsg) {
+          setMessages((prev) => [
+            ...prev,
+            { id: `fallback-${Date.now()}`, role: 'assistant', content: serverMsg, timestamp: new Date() },
+          ]);
+          return;
+        }
         throw new Error(serverMsg || 'Unexpected response from server');
       }
 
