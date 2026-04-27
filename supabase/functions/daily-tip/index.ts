@@ -22,9 +22,9 @@ serve(async (req) => {
   }
 
   try {
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) {
-      throw new Error("GEMINI_API_KEY is not configured");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY is not configured");
     }
 
     const authHeader = req.headers.get("Authorization");
@@ -97,14 +97,14 @@ Weight trend (recent): ${weightTrend !== null ? `${weightTrend > 0 ? "gained" : 
 Current time: ${new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
 `;
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`, {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${GEMINI_API_KEY}`,
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gemini-2.5-flash-lite",
+        model: "google/gemini-2.5-flash-lite",
         messages: [
           {
             role: "system",
@@ -117,13 +117,22 @@ Current time: ${new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute
 
     if (!response.ok) {
       console.error("AI gateway error", { status: response.status });
-      throw new Error("Failed to generate tip");
+      // Return 200 with a fallback tip so the UI doesn't break on transient upstream errors
+      const fallback = "💪 Keep going! Small consistent choices today add up to big wins. Stay hydrated and aim for balanced meals.";
+      return new Response(JSON.stringify({ tip: fallback, fallback: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const data = await response.json();
     const tip = data.choices?.[0]?.message?.content;
 
-    if (!tip) throw new Error("No tip generated");
+    if (!tip) {
+      const fallback = "🌟 Every healthy choice counts. Drink some water and take a short walk to energize your day.";
+      return new Response(JSON.stringify({ tip: fallback, fallback: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     console.info("Daily tip generated successfully");
 
