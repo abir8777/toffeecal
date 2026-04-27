@@ -121,8 +121,8 @@ serve(async (req) => {
       messages.push({ role: "user", content: message });
     }
 
-    // Vision needs a multimodal-capable model; otherwise use the fastest tier
-    const model = imageBase64 ? "google/gemini-2.5-flash" : "google/gemini-2.5-flash-lite";
+    // Use the fast default model; vision needs the multimodal flash variant
+    const model = imageBase64 ? "google/gemini-2.5-flash" : "google/gemini-3-flash-preview";
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -140,18 +140,22 @@ serve(async (req) => {
     if (!response.ok || !response.body) {
       if (response.status === 429) {
         return new Response(
-          JSON.stringify({ error: "I'm getting too many requests right now. Please try again in a moment! 😊" }),
+          JSON.stringify({ error: "Too many requests right now. Please try again in a moment! 😊" }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       if (response.status === 402) {
         return new Response(
-          JSON.stringify({ error: "Service temporarily unavailable. Please try again later." }),
+          JSON.stringify({ error: "AI credits exhausted. Please add credits to continue." }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      console.error("AI gateway error", { status: response.status });
-      throw new Error("Failed to get response from AI Doctor");
+      const errText = await response.text().catch(() => "");
+      console.error("AI gateway error", { status: response.status, body: errText });
+      return new Response(
+        JSON.stringify({ error: `AI service unavailable (${response.status}). Please try again.` }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Stream SSE directly back to the client
