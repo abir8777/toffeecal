@@ -86,6 +86,17 @@ export function useHealthCoach() {
         throw new Error(errMsg);
       }
 
+      // If the server returned JSON instead of a stream (e.g. error fallback), handle it
+      const contentType = resp.headers.get('content-type') || '';
+      if (!contentType.includes('text/event-stream')) {
+        let serverMsg = '';
+        try {
+          const j = await resp.json();
+          serverMsg = j.error || j.message || '';
+        } catch { /* ignore */ }
+        throw new Error(serverMsg || 'Unexpected response from server');
+      }
+
       const assistantId = `assistant-${Date.now()}`;
       // Insert empty assistant message we will progressively fill
       setMessages((prev) => [
@@ -130,6 +141,28 @@ export function useHealthCoach() {
             textBuffer = line + '\n' + textBuffer;
             break;
           }
+        }
+      }
+
+      // Flush any remaining buffered SSE lines after stream ended
+      if (textBuffer.trim()) {
+        for (let raw of textBuffer.split('\n')) {
+          if (!raw) continue;
+          if (raw.endsWith('\r')) raw = raw.slice(0, -1);
+          if (raw.startsWith(':') || raw.trim() === '') continue;
+          if (!raw.startsWith('data: ')) continue;
+          const jsonStr = raw.slice(6).trim();
+          if (jsonStr === '[DONE]') continue;
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const delta = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (delta) {
+              assistantContent += delta;
+              setMessages((prev) =>
+                prev.map((m) => (m.id === assistantId ? { ...m, content: assistantContent } : m))
+              );
+            }
+          } catch { /* ignore partial leftovers */ }
         }
       }
 
