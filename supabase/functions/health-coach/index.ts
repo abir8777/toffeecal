@@ -121,21 +121,35 @@ serve(async (req) => {
       messages.push({ role: "user", content: message });
     }
 
-    // Use the fast default model; vision needs the multimodal flash variant
-    const model = imageBase64 ? "google/gemini-2.5-flash" : "google/gemini-3-flash-preview";
+    const fallbackReply = isCoach
+      ? "I'm having a brief AI service hiccup, but I'm still here. Keep your next step simple: hydrate, choose a protein-rich meal, and log what you eat so we can stay on track."
+      : "I'm having a brief AI service hiccup right now. If this is urgent or worsening, please seek medical care immediately; otherwise, try again in a moment and consult a qualified clinician for personal medical advice.";
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        messages,
-        stream: true,
-      }),
-    });
+    const callAi = (model: string) =>
+      fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          stream: true,
+        }),
+      });
+
+    // Try the preferred fast model first, then a lighter backup for text requests.
+    const models = imageBase64
+      ? ["google/gemini-2.5-flash"]
+      : ["google/gemini-3-flash-preview", "google/gemini-2.5-flash-lite"];
+
+    let response = await callAi(models[0]);
+    if (!response.ok && response.status >= 500 && models[1]) {
+      const errText = await response.text().catch(() => "");
+      console.error("AI gateway primary model error", { status: response.status, body: errText });
+      response = await callAi(models[1]);
+    }
 
     if (!response.ok || !response.body) {
       if (response.status === 429) {
@@ -152,9 +166,17 @@ serve(async (req) => {
       }
       const errText = await response.text().catch(() => "");
       console.error("AI gateway error", { status: response.status, body: errText });
+
+      if (response.status >= 500) {
+        return new Response(
+          JSON.stringify({ message: fallbackReply, fallback: true }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       return new Response(
         JSON.stringify({ error: `AI service unavailable (${response.status}). Please try again.` }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: response.status || 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
