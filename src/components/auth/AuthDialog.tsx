@@ -14,23 +14,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { lovable } from '@/integrations/lovable/index';
 
-// Detect Median / generic WebView environments so we can adapt OAuth behavior.
-// In a WebView, opening OAuth in the *external* system browser breaks the
-// state-cookie roundtrip used by oauth.lovable.app (cookies are scoped to the
-// browser that initiated the flow). Keeping the flow in-WebView preserves the
-// cookie jar and lets the broker's state check succeed.
-function isWebViewEnvironment(): boolean {
-  if (typeof navigator === 'undefined') return false;
-  const ua = navigator.userAgent || '';
-  return (
-    /median/i.test(ua) ||
-    /\bwv\b/i.test(ua) || // Android WebView marker
-    /(iPhone|iPod|iPad).*AppleWebKit(?!.*Safari)/i.test(ua) || // iOS WKWebView (no Safari token)
-    // @ts-expect-error - injected by Median runtime when present
-    typeof window !== 'undefined' && !!window.median
-  );
-}
-
 interface AuthDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -175,28 +158,9 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
             onClick={async () => {
               setIsGoogleLoading(true);
               try {
-              const inWebView = isWebViewEnvironment();
-              // Debug log: helps diagnose Median vs browser flow on real devices.
-              console.info('[auth] Google OAuth start', {
-                inWebView,
-                origin: window.location.origin,
-                ua: navigator.userAgent,
-              });
-
                 const result = await lovable.auth.signInWithOAuth("google", {
                   redirect_uri: window.location.origin,
-                extraParams: {
-                  // Force account chooser so stale Google sessions in the
-                  // WebView don't silently reuse a different account.
-                  prompt: 'select_account',
-                },
                 });
-
-              console.info('[auth] Google OAuth result', {
-                redirected: (result as { redirected?: boolean }).redirected,
-                hasError: !!result.error,
-              });
-
                 if (result.error) {
                   toast({
                     title: "Google sign in failed",
