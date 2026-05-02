@@ -8,17 +8,11 @@ const ALLOWED_ORIGINS = [
 
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get("Origin") || "";
-  // Allow listed origins explicitly; fall back to "*" so that mobile WebView
-  // (Median app, file://, capacitor://, etc.) where Origin may be missing
-  // or non-standard does not get blocked by CORS.
-  const allowedOrigin =
-    origin && ALLOWED_ORIGINS.includes(origin) ? origin : "*";
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
   return {
     "Access-Control-Allow-Origin": allowedOrigin,
     "Access-Control-Allow-Headers":
       "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    Vary: "Origin",
   };
 }
 
@@ -46,10 +40,8 @@ serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const { data: userData, error: userError } = await userClient.auth.getUser();
-    const user = userData?.user;
-    if (userError || !user) {
-      console.error("getUser failed:", userError);
+    const { data: { user } } = await userClient.auth.getUser();
+    if (!user) {
       return new Response(
         JSON.stringify({ error: "User not authenticated" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -57,12 +49,7 @@ serve(async (req) => {
     }
 
     // Validate confirmation
-    let body: { confirmText?: string } = {};
-    try {
-      body = await req.json();
-    } catch (_) {
-      // ignore
-    }
+    const body = await req.json();
     if (body.confirmText !== "DELETE") {
       return new Response(
         JSON.stringify({ error: "Confirmation required" }),
@@ -75,49 +62,20 @@ serve(async (req) => {
     // Use service role client for deletion
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-    // Best-effort: remove avatar files first (they don't cascade).
-    // Wrap each step so a single failure surfaces a clear error message
-    // instead of being swallowed.
-    try {
-      const { data: files } = await adminClient.storage.from("avatars").list(userId);
-      if (files && files.length > 0) {
-        await adminClient.storage
-          .from("avatars")
-          .remove(files.map((f) => `${userId}/${f.name}`));
-      }
-    } catch (e) {
-      console.error("avatar cleanup failed (continuing):", e);
+    // Delete user data from all tables
+    await adminClient.from("food_logs").delete().eq("user_id", userId);
+    await adminClient.from("weight_logs").delete().eq("user_id", userId);
+    await adminClient.from("water_intake").delete().eq("user_id", userId);
+    await adminClient.from("profiles").delete().eq("user_id", userId);
+
+    // Delete avatar files from storage
+    const { data: files } = await adminClient.storage.from("avatars").list(userId);
+    if (files && files.length > 0) {
+      await adminClient.storage.from("avatars").remove(files.map((f) => `${userId}/${f.name}`));
     }
 
-    // All public tables FK to auth.users with ON DELETE CASCADE, so deleting
-    // the auth user removes profiles, food_logs, weight_logs, water_intake,
-    // and saved_meal_plans automatically. We still attempt explicit cleanup
-    // first to be safe against future tables without cascade.
-    for (const table of [
-      "food_logs",
-      "weight_logs",
-      "water_intake",
-      "saved_meal_plans",
-      "profiles",
-    ]) {
-      const { error: delErr } = await adminClient
-        .from(table)
-        .delete()
-        .eq("user_id", userId);
-      if (delErr) {
-        console.error(`Failed deleting from ${table}:`, delErr);
-      }
-    }
-
-    // Delete the auth user — this is the critical step.
-    const { error: authDeleteError } = await adminClient.auth.admin.deleteUser(userId);
-    if (authDeleteError) {
-      console.error("auth.admin.deleteUser failed:", authDeleteError);
-      return new Response(
-        JSON.stringify({ error: `Failed to delete user: ${authDeleteError.message}` }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // Delete the auth user
+    await adminClient.auth.admin.deleteUser(userId);
 
     console.info("Account deleted successfully");
 
@@ -127,9 +85,8 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error("delete-account error:", error);
-    const message = error instanceof Error ? error.message : String(error);
     return new Response(
-      JSON.stringify({ error: `Account deletion failed: ${message}` }),
+      JSON.stringify({ error: "An error occurred while deleting your account. Please try again." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

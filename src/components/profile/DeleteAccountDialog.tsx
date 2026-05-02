@@ -28,29 +28,16 @@ export function DeleteAccountDialog() {
 
     setIsDeleting(true);
     try {
-      // Explicitly attach the user's access token so the edge function can
-      // identify the user (verify_jwt = false means it isn't auto-attached).
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData.session?.access_token;
-      if (!accessToken) {
-        throw new Error('You are not signed in. Please sign in again.');
-      }
-
       const { data, error } = await supabase.functions.invoke('delete-account', {
         body: { confirmText: 'DELETE' },
-        headers: { Authorization: `Bearer ${accessToken}` },
       });
 
       if (error) throw error;
-      if (data?.error) throw new Error(data.error);
 
       await signOut();
       toast.success('Your account has been deleted');
     } catch (error) {
-      console.error('Delete account failed:', error);
-      const message =
-        error instanceof Error ? error.message : 'Failed to delete account. Please try again.';
-      toast.error(message);
+      toast.error('Failed to delete account. Please try again.');
     } finally {
       setIsDeleting(false);
       setOpen(false);
