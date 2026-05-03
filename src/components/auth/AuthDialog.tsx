@@ -1,9 +1,20 @@
 import { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, Loader2, Phone } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Loader2, ChevronDown, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import { cn } from '@/lib/utils';
+import { COUNTRY_CODES, flagEmoji, toE164, isValidE164 } from '@/lib/country-codes';
 import {
   Dialog,
   DialogContent,
@@ -31,6 +42,8 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   // Phone OTP state
   const [phone, setPhone] = useState('');
+  const [countryIso, setCountryIso] = useState('IN'); // default India per project locale
+  const [countryOpen, setCountryOpen] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [isPhoneLoading, setIsPhoneLoading] = useState(false);
@@ -64,17 +77,26 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
     }
   };
 
-  // Normalize phone to E.164 (must start with + and country code)
-  const normalizePhone = (raw: string) => {
-    const trimmed = raw.trim().replace(/[\s\-()]/g, '');
-    return trimmed.startsWith('+') ? trimmed : `+${trimmed}`;
-  };
+  // Resolve currently selected country (fallback to first entry).
+  const selectedCountry =
+    COUNTRY_CODES.find((c) => c.code === countryIso) ?? COUNTRY_CODES[0];
+
+  // Build the E.164 number from the selected dial code + local input.
+  const e164Phone = toE164(selectedCountry.dial, phone);
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isValidE164(e164Phone)) {
+      toast({
+        title: 'Invalid phone number',
+        description: 'Please enter a valid number for the selected country.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setIsPhoneLoading(true);
     const { error } = await supabase.auth.signInWithOtp({
-      phone: normalizePhone(phone),
+      phone: e164Phone,
     });
     setIsPhoneLoading(false);
     if (error) {
@@ -89,7 +111,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
     e.preventDefault();
     setIsPhoneLoading(true);
     const { error } = await supabase.auth.verifyOtp({
-      phone: normalizePhone(phone),
+      phone: e164Phone,
       token: otpCode,
       type: 'sms',
     });
@@ -217,18 +239,74 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
 
           {authMethod === 'phone' && (
             <form onSubmit={otpSent ? handleVerifyOtp : handleSendOtp} className="space-y-4">
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              {/* Country selector + local number. Combined into one rounded group. */}
+              <div className="flex gap-2">
+                <Popover open={countryOpen} onOpenChange={setCountryOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={countryOpen}
+                      disabled={otpSent}
+                      className="h-12 rounded-xl px-3 gap-1.5 shrink-0"
+                    >
+                      <span className="text-lg leading-none">{flagEmoji(selectedCountry.code)}</span>
+                      <span className="text-sm font-medium">{selectedCountry.dial}</span>
+                      <ChevronDown className="h-4 w-4 opacity-60" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[280px] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search country…" />
+                      <CommandList>
+                        <CommandEmpty>No country found.</CommandEmpty>
+                        <CommandGroup>
+                          {COUNTRY_CODES.map((c) => (
+                            <CommandItem
+                              key={`${c.code}-${c.dial}`}
+                              value={`${c.name} ${c.dial} ${c.code}`}
+                              onSelect={() => {
+                                setCountryIso(c.code);
+                                setCountryOpen(false);
+                              }}
+                              className="gap-2"
+                            >
+                              <span className="text-lg leading-none">{flagEmoji(c.code)}</span>
+                              <span className="flex-1 truncate">{c.name}</span>
+                              <span className="text-xs text-muted-foreground">{c.dial}</span>
+                              <Check
+                                className={cn(
+                                  'h-4 w-4',
+                                  countryIso === c.code ? 'opacity-100' : 'opacity-0',
+                                )}
+                              />
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+
                 <Input
                   type="tel"
-                  placeholder="+1 555 123 4567"
+                  inputMode="tel"
+                  autoComplete="tel-national"
+                  placeholder={selectedCountry.example}
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="pl-10 h-12 rounded-xl"
+                  // Allow only digits + common separators while typing; we strip on submit.
+                  onChange={(e) => setPhone(e.target.value.replace(/[^\d\s\-()]/g, ''))}
+                  className="flex-1 h-12 rounded-xl"
                   required
                   disabled={otpSent}
                 />
               </div>
+              {phone && !otpSent && (
+                <p className="text-[11px] text-muted-foreground -mt-2 pl-1">
+                  Will send to <span className="font-mono">{e164Phone}</span>
+                </p>
+              )}
 
               {otpSent && (
                 <div className="flex justify-center">
