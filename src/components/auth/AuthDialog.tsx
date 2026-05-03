@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Loader2, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import {
   Dialog,
   DialogContent,
@@ -13,6 +14,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { lovable } from '@/integrations/lovable/index';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AuthDialogProps {
   open: boolean;
@@ -20,12 +22,18 @@ interface AuthDialogProps {
 }
 
 export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
+  const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email');
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  // Phone OTP state
+  const [phone, setPhone] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [isPhoneLoading, setIsPhoneLoading] = useState(false);
 
   const { signIn, signUp } = useAuth();
   const { toast } = useToast();
@@ -56,6 +64,43 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
     }
   };
 
+  // Normalize phone to E.164 (must start with + and country code)
+  const normalizePhone = (raw: string) => {
+    const trimmed = raw.trim().replace(/[\s\-()]/g, '');
+    return trimmed.startsWith('+') ? trimmed : `+${trimmed}`;
+  };
+
+  const handleSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsPhoneLoading(true);
+    const { error } = await supabase.auth.signInWithOtp({
+      phone: normalizePhone(phone),
+    });
+    setIsPhoneLoading(false);
+    if (error) {
+      toast({ title: 'Could not send code', description: error.message, variant: 'destructive' });
+    } else {
+      setOtpSent(true);
+      toast({ title: 'Code sent', description: 'Check your phone for the 6-digit code.' });
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsPhoneLoading(true);
+    const { error } = await supabase.auth.verifyOtp({
+      phone: normalizePhone(phone),
+      token: otpCode,
+      type: 'sms',
+    });
+    setIsPhoneLoading(false);
+    if (error) {
+      toast({ title: 'Verification failed', description: error.message, variant: 'destructive' });
+    } else {
+      onOpenChange(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm p-0 overflow-hidden rounded-2xl">
@@ -72,6 +117,30 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
             </DialogDescription>
           </DialogHeader>
 
+          {/* Method switcher: email vs phone */}
+          <div className="flex bg-muted rounded-xl p-1 mb-4">
+            <button
+              type="button"
+              onClick={() => { setAuthMethod('email'); setOtpSent(false); }}
+              className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${
+                authMethod === 'email' ? 'bg-card text-foreground shadow-sm' : 'text-foreground/60'
+              }`}
+            >
+              Email
+            </button>
+            <button
+              type="button"
+              onClick={() => setAuthMethod('phone')}
+              className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${
+                authMethod === 'phone' ? 'bg-card text-foreground shadow-sm' : 'text-foreground/60'
+              }`}
+            >
+              Phone
+            </button>
+          </div>
+
+          {authMethod === 'email' && (
+          <>
           <div className="flex bg-muted rounded-xl p-1 mb-6">
             <button
               type="button"
@@ -143,6 +212,60 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
               )}
             </Button>
           </form>
+          </>
+          )}
+
+          {authMethod === 'phone' && (
+            <form onSubmit={otpSent ? handleVerifyOtp : handleSendOtp} className="space-y-4">
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input
+                  type="tel"
+                  placeholder="+1 555 123 4567"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="pl-10 h-12 rounded-xl"
+                  required
+                  disabled={otpSent}
+                />
+              </div>
+
+              {otpSent && (
+                <div className="flex justify-center">
+                  <InputOTP maxLength={6} value={otpCode} onChange={setOtpCode}>
+                    <InputOTPGroup>
+                      <InputOTPSlot index={0} />
+                      <InputOTPSlot index={1} />
+                      <InputOTPSlot index={2} />
+                      <InputOTPSlot index={3} />
+                      <InputOTPSlot index={4} />
+                      <InputOTPSlot index={5} />
+                    </InputOTPGroup>
+                  </InputOTP>
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                className="w-full h-12 rounded-xl gradient-primary text-primary-foreground font-semibold"
+                disabled={isPhoneLoading || (otpSent && otpCode.length < 6)}
+              >
+                {isPhoneLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : otpSent ? 'Verify Code' : 'Send Code'}
+              </Button>
+
+              {otpSent && (
+                <button
+                  type="button"
+                  onClick={() => { setOtpSent(false); setOtpCode(''); }}
+                  className="w-full text-xs text-muted-foreground"
+                >
+                  Use a different number
+                </button>
+              )}
+            </form>
+          )}
 
           <div className="flex items-center gap-3 my-4">
             <Separator className="flex-1" />
