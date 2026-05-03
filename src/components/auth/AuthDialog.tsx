@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, Loader2, ChevronDown, Check } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Loader2, ChevronDown, Check, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
@@ -350,6 +350,18 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
             <span className="text-xs text-muted-foreground font-medium">OR</span>
             <Separator className="flex-1" />
           </div>
+
+          {authMethod === 'email' && (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full h-12 rounded-xl font-semibold gap-2 mb-3"
+              onClick={() => { setAuthMethod('phone'); setOtpSent(false); }}
+            >
+              <Phone className="h-5 w-5" />
+              Continue with Phone Number
+            </Button>
+          )}
 
           <Button
             type="button"
