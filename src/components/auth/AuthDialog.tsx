@@ -345,23 +345,23 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
             </form>
           )}
 
-          <div className="flex items-center gap-3 my-4">
-            <Separator className="flex-1" />
-            <span className="text-xs text-muted-foreground font-medium">OR</span>
-            <Separator className="flex-1" />
-          </div>
-
           {authMethod === 'email' && (
             <Button
               type="button"
               variant="outline"
-              className="w-full h-12 rounded-xl font-semibold gap-2 mb-3"
+              className="w-full h-12 rounded-xl font-semibold gap-2 mt-4"
               onClick={() => { setAuthMethod('phone'); setOtpSent(false); }}
             >
               <Phone className="h-5 w-5" />
               Continue with Phone Number
             </Button>
           )}
+
+          <div className="flex items-center gap-3 my-4">
+            <Separator className="flex-1" />
+            <span className="text-xs text-muted-foreground font-medium">OR</span>
+            <Separator className="flex-1" />
+          </div>
 
           <Button
             type="button"
