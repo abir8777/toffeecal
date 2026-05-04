@@ -57,6 +57,11 @@ serve(async (req) => {
       return jsonResponse({ error: "Message too long (max 2000 characters)" }, 400);
     }
 
+    // Cap image payload size (~4 MB base64) to prevent resource exhaustion / cost abuse.
+    if (imageBase64 && typeof imageBase64 === "string" && imageBase64.length > 4 * 1024 * 1024) {
+      return jsonResponse({ error: "Image too large (max ~3 MB)" }, 400);
+    }
+
     if (conversationHistory && !Array.isArray(conversationHistory)) {
       conversationHistory = [];
     }
@@ -102,8 +107,15 @@ serve(async (req) => {
     const messages: any[] = [{ role: "system", content: systemPrompt }];
 
     if (conversationHistory && Array.isArray(conversationHistory)) {
+      const ALLOWED_ROLES = new Set(["user", "assistant"]);
       for (const msg of conversationHistory) {
-        if (msg.role && msg.content) {
+        if (
+          msg &&
+          ALLOWED_ROLES.has(msg.role) &&
+          typeof msg.content === "string" &&
+          msg.content.length > 0 &&
+          msg.content.length <= 2000
+        ) {
           messages.push({ role: msg.role, content: msg.content });
         }
       }
