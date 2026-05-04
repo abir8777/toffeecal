@@ -85,7 +85,7 @@ serve(async (req) => {
     const carbsTarget = Math.round((calorieTarget * ratio.carbs) / 4);
     const fatTarget = Math.round((calorieTarget * ratio.fat) / 9);
 
-    const prompt = `Generate a 7-day meal plan as a JSON array. The user wants ${cuisinePreference} cuisine.
+    const prompt = `Generate a 7-day meal plan as a JSON array. The user wants ${safeCuisine} cuisine.
 
 User profile:
 - Daily calorie target: ${calorieTarget} kcal
@@ -110,7 +110,7 @@ Return ONLY valid JSON (no markdown, no backticks) in this exact format:
 Rules:
 - Each day must have exactly 4 meals (breakfast, lunch, dinner, snack)
 - Daily totals should approximate the calorie and macro targets
-- Use realistic, specific ${cuisinePreference} dishes
+- Use realistic, specific ${safeCuisine} dishes
 - Keep descriptions to 1 sentence
 - Return 7 days (Monday through Sunday)`;
 
