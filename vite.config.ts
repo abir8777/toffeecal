@@ -17,11 +17,14 @@ export default defineConfig(({ mode }) => ({
     react(),
     mode === "development" && componentTagger(),
     VitePWA({
+      injectRegister: "auto",
       registerType: "autoUpdate",
+      cleanupOutdatedCaches: true,
       includeAssets: ["images/toffeecal-logo.png", "images/toffeecal-logo.webp"],
       workbox: {
         skipWaiting: true,
         clientsClaim: true,
+        navigateFallback: "/index.html",
         navigateFallbackDenylist: [
           /^\/~oauth/,
           /^\/auth/,
