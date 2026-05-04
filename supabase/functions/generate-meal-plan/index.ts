@@ -47,12 +47,18 @@ serve(async (req) => {
     const body = await req.json();
     const { cuisinePreference } = body;
 
-    if (!cuisinePreference || typeof cuisinePreference !== "string") {
+    if (
+      !cuisinePreference ||
+      typeof cuisinePreference !== "string" ||
+      cuisinePreference.length > 100
+    ) {
       return new Response(
-        JSON.stringify({ error: "Cuisine preference is required" }),
+        JSON.stringify({ error: "Invalid cuisine preference (max 100 characters)" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+    // Strip control chars to prevent prompt injection via hidden formatting.
+    const safeCuisine = cuisinePreference.replace(/[\u0000-\u001F\u007F]/g, "").trim();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
