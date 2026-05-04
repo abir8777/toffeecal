@@ -17,9 +17,8 @@ export default defineConfig(({ mode }) => ({
     react(),
     mode === "development" && componentTagger(),
     VitePWA({
-      injectRegister: "auto",
+      injectRegister: "script-defer",
       registerType: "autoUpdate",
-      cleanupOutdatedCaches: true,
       includeAssets: ["images/toffeecal-logo.png", "images/toffeecal-logo.webp"],
       workbox: {
         skipWaiting: true,
