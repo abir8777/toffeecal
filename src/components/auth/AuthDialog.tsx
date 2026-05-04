@@ -140,11 +140,11 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
           </DialogHeader>
 
           {/* Method switcher: email vs phone */}
-          <div className="flex bg-muted rounded-xl p-1 mb-4">
+          <div className="flex bg-muted rounded-full p-1 mb-4">
             <button
               type="button"
               onClick={() => { setAuthMethod('email'); setOtpSent(false); }}
-              className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${
+              className={`flex-1 py-2.5 text-sm font-medium rounded-full transition-all ${
                 authMethod === 'email' ? 'bg-card text-foreground shadow-sm' : 'text-foreground/60'
               }`}
             >
@@ -153,7 +153,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
             <button
               type="button"
               onClick={() => setAuthMethod('phone')}
-              className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${
+              className={`flex-1 py-2.5 text-sm font-medium rounded-full transition-all ${
                 authMethod === 'phone' ? 'bg-card text-foreground shadow-sm' : 'text-foreground/60'
               }`}
             >
@@ -163,11 +163,11 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
 
           {authMethod === 'email' && (
           <>
-          <div className="flex bg-muted rounded-xl p-1 mb-6">
+          <div className="flex bg-muted rounded-full p-1 mb-6">
             <button
               type="button"
               onClick={() => setIsLogin(true)}
-              className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all ${
+              className={`flex-1 py-2.5 text-sm font-medium rounded-full transition-all ${
                 isLogin
                   ? 'bg-card text-foreground shadow-sm'
                   : 'text-foreground/60'
@@ -178,7 +178,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
             <button
               type="button"
               onClick={() => setIsLogin(false)}
-              className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all ${
+              className={`flex-1 py-2.5 text-sm font-medium rounded-full transition-all ${
                 !isLogin
                   ? 'bg-card text-foreground shadow-sm'
                   : 'text-foreground/60'
