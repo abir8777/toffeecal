@@ -28,16 +28,19 @@ import "./index.css";
     }
   }
 
-  // One-time global SW reset for users with stale workers from before
-  // the OAuth denylist was added.
-  const RESET_KEY = "sw-reset-v2";
+  // One-time global SW reset for users with stale workers/caches from before
+  // the latest auth modal and OAuth denylist were added.
+  const RESET_KEY = "sw-reset-v3";
   if (!localStorage.getItem(RESET_KEY)) {
     localStorage.setItem(RESET_KEY, "1");
-    navigator.serviceWorker
-      .getRegistrations()
-      .then((regs) => {
+    Promise.all([
+      navigator.serviceWorker.getRegistrations(),
+      "caches" in window ? caches.keys() : Promise.resolve([]),
+    ])
+      .then(([regs, cacheNames]) => {
+        const cacheCleanup = Promise.all(cacheNames.map((name) => caches.delete(name)));
         if (regs.length === 0) return;
-        return Promise.all(regs.map((r) => r.unregister())).then(() => {
+        return Promise.all([cacheCleanup, ...regs.map((r) => r.unregister())]).then(() => {
           window.location.reload();
         });
       })
