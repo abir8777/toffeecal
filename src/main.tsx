@@ -30,7 +30,7 @@ import "./index.css";
 
   // One-time global SW reset for users with stale workers/caches from before
   // the latest auth modal and OAuth denylist were added.
-  const RESET_KEY = "sw-reset-v3";
+  const RESET_KEY = "sw-reset-v4";
   if (!localStorage.getItem(RESET_KEY)) {
     localStorage.setItem(RESET_KEY, "1");
     Promise.all([
@@ -41,7 +41,7 @@ import "./index.css";
         const cacheCleanup = Promise.all(cacheNames.map((name) => caches.delete(name)));
         if (regs.length === 0) return;
         return Promise.all([cacheCleanup, ...regs.map((r) => r.unregister())]).then(() => {
-          window.location.reload();
+          window.location.replace(`${window.location.pathname}${window.location.search}${window.location.search ? "&" : "?"}cache-reset=${Date.now()}${window.location.hash}`);
         });
       })
       .catch(() => {
