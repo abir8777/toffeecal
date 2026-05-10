@@ -1,4 +1,13 @@
-import { lazy, Suspense } from "react";
+import Onboarding from "./pages/Onboarding";
+import Dashboard from "./pages/Dashboard";
+import LogFood from "./pages/LogFood";
+import Coach from "./pages/Coach";
+import History from "./pages/History";
+import Profile from "./pages/Profile";
+import Premium from "./pages/Premium";
+import MealPlan from "./pages/MealPlan";
+import Install from "./pages/Install";
+import NotFound from "./pages/NotFound";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { CoachModeProvider } from "@/contexts/CoachModeContext";
@@ -7,43 +16,24 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 
-// Lazy-loaded pages
-const Onboarding = lazy(() => import("./pages/Onboarding"));
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const LogFood = lazy(() => import("./pages/LogFood"));
-const Coach = lazy(() => import("./pages/Coach"));
-const History = lazy(() => import("./pages/History"));
-const Profile = lazy(() => import("./pages/Profile"));
-const Premium = lazy(() => import("./pages/Premium"));
-const MealPlan = lazy(() => import("./pages/MealPlan"));
-const Install = lazy(() => import("./pages/Install"));
-const NotFound = lazy(() => import("./pages/NotFound"));
-
-const PageLoader = () => (
-  <div className="min-h-screen flex items-center justify-center bg-background">
-    <div className="animate-pulse text-primary">Loading...</div>
-  </div>
-);
-
 const queryClient = new QueryClient();
 
 function AppRoutes() {
   return (
-    <Suspense fallback={<PageLoader />}>
-      <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/onboarding" element={<Onboarding />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/log" element={<LogFood />} />
-        <Route path="/history" element={<History />} />
-        <Route path="/coach" element={<Coach />} />
-        <Route path="/meal-plan" element={<MealPlan />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/premium" element={<Premium />} />
-        <Route path="/install" element={<Install />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </Suspense>
+    <Routes>
+      <Route path="/" element={<Dashboard />} />
+      <Route path="/index" element={<Dashboard />} />
+      <Route path="/onboarding" element={<Onboarding />} />
+      <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/log" element={<LogFood />} />
+      <Route path="/history" element={<History />} />
+      <Route path="/coach" element={<Coach />} />
+      <Route path="/meal-plan" element={<MealPlan />} />
+      <Route path="/profile" element={<Profile />} />
+      <Route path="/premium" element={<Premium />} />
+      <Route path="/install" element={<Install />} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
   );
 }
 
