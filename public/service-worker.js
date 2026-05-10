@@ -2,6 +2,10 @@ self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());
 });
 
+self.addEventListener("fetch", (event) => {
+  event.respondWith(fetch(event.request, { cache: "reload" }));
+});
+
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
@@ -15,7 +19,7 @@ self.addEventListener("activate", (event) => {
         includeUncontrolled: true,
       });
 
-      await Promise.all(
+      await Promise.allSettled(
         clients.map((client) => {
           const url = new URL(client.url);
           url.searchParams.set("sw-cleanup", Date.now().toString());
