@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
+import { toast } from 'sonner';
 
 export interface ChatMessage {
   id: string;
@@ -110,7 +111,14 @@ export function ChatInterface({
       setInput(transcript);
     };
     recognition.onend = () => setIsListening(false);
-    recognition.onerror = () => setIsListening(false);
+    recognition.onerror = (e: any) => {
+      setIsListening(false);
+      if (e?.error === 'not-allowed' || e?.error === 'service-not-allowed') {
+        toast.error('Microphone access denied. Please enable it in your browser settings.');
+      } else if (e?.error === 'no-speech') {
+        toast('No speech detected. Try again.');
+      }
+    };
     recognitionRef.current = recognition;
     recognition.start();
     setIsListening(true);
