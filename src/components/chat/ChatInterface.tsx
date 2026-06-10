@@ -313,26 +313,33 @@ export function ChatInterface({
       {/* Input */}
       <form onSubmit={handleSubmit} className="p-4 border-t bg-background">
         <div className="flex gap-2">
-          {isDoctor && (
-            <>
-              <Button type="button" size="icon" variant="outline" onClick={() => cameraInputRef.current?.click()} disabled={isLoading} className="flex-shrink-0" title="Take photo">
-                <Camera className="w-4 h-4" />
-              </Button>
-              <Button type="button" size="icon" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isLoading} className="flex-shrink-0" title="Upload image">
-                <ImagePlus className="w-4 h-4" />
-              </Button>
-            </>
-          )}
+          <Button type="button" size="icon" variant="outline" onClick={() => cameraInputRef.current?.click()} disabled={isLoading} className="flex-shrink-0" title="Take photo">
+            <Camera className="w-4 h-4" />
+          </Button>
+          <Button type="button" size="icon" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isLoading} className="flex-shrink-0" title="Upload image">
+            <ImagePlus className="w-4 h-4" />
+          </Button>
           <Input
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={placeholder}
             disabled={isLoading}
-            className="flex-1"
+            className="flex-1 min-w-0"
           />
           {speechSupported && (
-            <Button type="button" size="icon" variant={isListening ? "destructive" : "outline"} onClick={toggleListening} disabled={isLoading} className="flex-shrink-0">
+            <Button
+              type="button"
+              size="icon"
+              variant={isListening ? "destructive" : "outline"}
+              onClick={toggleListening}
+              disabled={isLoading}
+              className={cn(
+                "flex-shrink-0 relative",
+                isListening && "animate-pulse ring-2 ring-destructive/50"
+              )}
+              title={isListening ? "Stop listening" : "Start voice input"}
+            >
               {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
             </Button>
           )}
