@@ -385,7 +385,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
               setIsGoogleLoading(true);
               try {
                 const result = await lovable.auth.signInWithOAuth("google", {
-                  redirect_uri: window.location.origin,
+                  redirect_uri: getOAuthRedirectUri(),
                 });
                 if (result.error) {
                   toast({
