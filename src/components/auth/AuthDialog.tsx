@@ -27,17 +27,33 @@ import { useToast } from '@/hooks/use-toast';
 import { lovable } from '@/integrations/lovable/index';
 import { supabase } from '@/integrations/supabase/client';
 
-// Detect when the app is running inside a native wrapper (Median.co, Capacitor, etc.).
-// Google blocks OAuth in embedded WebViews, so wrappers must redirect via a custom
-// URL scheme so the system browser can hand control back to the native app.
-function getOAuthRedirectUri(): string {
-  if (typeof window === 'undefined') return '';
+// Lovable's managed OAuth broker only allows redirect URIs that match the
+// project's web origins (lovable.app subdomains + custom domains). Custom
+// schemes like `toffeecal://` are rejected with
+// `redirect_uri is not allowed`.
+//
+// To support the Median.co wrapper we keep the redirect_uri as the published
+// HTTPS origin and rely on Android App Links / iOS Universal Links configured
+// in the Median dashboard to deep-link the final callback URL back into the
+// native app. The web origin is always an allowed redirect URI.
+const PUBLISHED_ORIGIN = 'https://toffeecal.lovable.app';
+
+function isWrappedApp(): boolean {
+  if (typeof window === 'undefined') return false;
   const ua = window.navigator.userAgent || '';
-  const isWrapped =
+  return (
     /median|gonative|wv\)|; wv|capacitor|cordova/i.test(ua) ||
-    // Median injects this global when running inside the wrapper.
-    typeof (window as unknown as { median?: unknown }).median !== 'undefined';
-  return isWrapped ? 'toffeecal://oauth' : window.location.origin;
+    typeof (window as unknown as { median?: unknown }).median !== 'undefined'
+  );
+}
+
+function getOAuthRedirectUri(): string {
+  if (typeof window === 'undefined') return PUBLISHED_ORIGIN;
+  // Inside the Median wrapper, force the published HTTPS origin so the
+  // OAuth broker accepts the redirect_uri AND the OS can intercept the
+  // callback via App Links / Universal Links and bounce it back into the app.
+  if (isWrappedApp()) return PUBLISHED_ORIGIN;
+  return window.location.origin;
 }
 
 interface AuthDialogProps {
