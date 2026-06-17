@@ -27,6 +27,24 @@ import { useToast } from '@/hooks/use-toast';
 import { lovable } from '@/integrations/lovable/index';
 import { supabase } from '@/integrations/supabase/client';
 
+type MedianGoogleLoginResponse = {
+  idToken?: string;
+  error?: string;
+  type?: 'google' | string;
+};
+
+declare global {
+  interface Window {
+    median?: {
+      socialLogin?: {
+        google?: {
+          login?: (options: { callback: (response: MedianGoogleLoginResponse) => void }) => void;
+        };
+      };
+    };
+  }
+}
+
 // Use the app's web origin as the OAuth redirect. Lovable's OAuth broker only
 // allows redirect URIs on the project's lovable.app domains and configured
 // custom domains — custom URL schemes (e.g. `toffeecal://`) are rejected with
@@ -36,6 +54,71 @@ import { supabase } from '@/integrations/supabase/client';
 function getOAuthRedirectUri(): string {
   if (typeof window === 'undefined') return '';
   return window.location.origin;
+}
+
+function isMedianApp(): boolean {
+  if (typeof window === 'undefined') return false;
+  return /median|gonative/i.test(window.navigator.userAgent) || Boolean(window.median);
+}
+
+function canUseMedianNativeGoogleLogin(): boolean {
+  if (typeof window === 'undefined') return false;
+  return typeof window.median?.socialLogin?.google?.login === 'function';
+}
+
+async function signInWithMedianNativeGoogle(): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const login = window.median?.socialLogin?.google?.login;
+
+    if (typeof login !== 'function') {
+      reject(new Error('Native Google sign-in is not available in this app build.'));
+      return;
+    }
+
+    let settled = false;
+    const timeoutId = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      reject(new Error('Google sign-in timed out. Please try again.'));
+    }, 120000);
+
+    const settle = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeoutId);
+      fn();
+    };
+
+    try {
+      login({
+        callback: (response) => {
+          if (response.error) {
+            settle(() => reject(new Error(response.error)));
+            return;
+          }
+
+          if (!response.idToken) {
+            settle(() => reject(new Error('No Google ID token was returned.')));
+            return;
+          }
+
+          supabase.auth
+            .signInWithIdToken({ provider: 'google', token: response.idToken })
+            .then(({ error }) => {
+              settle(() => {
+                if (error) reject(error);
+                else resolve();
+              });
+            })
+            .catch((error) => {
+              settle(() => reject(error instanceof Error ? error : new Error(String(error))));
+            });
+        },
+      });
+    } catch (error) {
+      settle(() => reject(error instanceof Error ? error : new Error(String(error))));
+    }
+  });
 }
 
 interface AuthDialogProps {
@@ -382,6 +465,21 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
             onClick={async () => {
               setIsGoogleLoading(true);
               try {
+                if (canUseMedianNativeGoogleLogin()) {
+                  await signInWithMedianNativeGoogle();
+                  onOpenChange(false);
+                  return;
+                }
+
+                if (isMedianApp()) {
+                  toast({
+                    title: "Google sign in needs app update",
+                    description: "Rebuild the Median app with the Social Login plugin enabled, then try again.",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+
                 const result = await lovable.auth.signInWithOAuth("google", {
                   redirect_uri: getOAuthRedirectUri(),
                 });
