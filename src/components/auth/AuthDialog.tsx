@@ -27,17 +27,15 @@ import { useToast } from '@/hooks/use-toast';
 import { lovable } from '@/integrations/lovable/index';
 import { supabase } from '@/integrations/supabase/client';
 
-// Detect when the app is running inside a native wrapper (Median.co, Capacitor, etc.).
-// Google blocks OAuth in embedded WebViews, so wrappers must redirect via a custom
-// URL scheme so the system browser can hand control back to the native app.
+// Use the app's web origin as the OAuth redirect. Lovable's OAuth broker only
+// allows redirect URIs on the project's lovable.app domains and configured
+// custom domains — custom URL schemes (e.g. `toffeecal://`) are rejected with
+// "redirect_uri is not allowed". Native wrappers (Median, Capacitor) must use
+// Universal Links / App Links configured at the wrapper level to bounce the
+// HTTPS callback back into the native app.
 function getOAuthRedirectUri(): string {
   if (typeof window === 'undefined') return '';
-  const ua = window.navigator.userAgent || '';
-  const isWrapped =
-    /median|gonative|wv\)|; wv|capacitor|cordova/i.test(ua) ||
-    // Median injects this global when running inside the wrapper.
-    typeof (window as unknown as { median?: unknown }).median !== 'undefined';
-  return isWrapped ? 'toffeecal://oauth' : window.location.origin;
+  return window.location.origin;
 }
 
 interface AuthDialogProps {
