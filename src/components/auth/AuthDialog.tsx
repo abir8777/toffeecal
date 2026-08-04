@@ -142,7 +142,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
   const [otpSent, setOtpSent] = useState(false);
   const [isPhoneLoading, setIsPhoneLoading] = useState(false);
 
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, resetPassword } = useAuth();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -156,9 +156,12 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
     setIsLoading(false);
 
     if (error) {
+      const invalidCredentials = isLogin && /invalid login credentials/i.test(error.message);
       toast({
         title: isLogin ? "Sign in failed" : "Sign up failed",
-        description: error.message,
+        description: invalidCredentials
+          ? 'Incorrect password. If you created this account with Google, use Continue with Google instead.'
+          : error.message,
         variant: "destructive",
       });
     } else if (!isLogin) {
@@ -315,6 +318,28 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
                 {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
             </div>
+
+            {isLogin && (
+              <div className="flex justify-end -mt-2">
+                <Button
+                  type="button"
+                  variant="link"
+                  className="h-auto p-0 text-xs"
+                  onClick={async () => {
+                    if (!email.trim()) {
+                      toast({ title: 'Enter your email first', description: 'Then tap Forgot password again.' });
+                      return;
+                    }
+                    const { error } = await resetPassword(email.trim());
+                    toast(error
+                      ? { title: 'Could not send reset link', description: error.message, variant: 'destructive' }
+                      : { title: 'Check your email', description: 'We sent you a password reset link.' });
+                  }}
+                >
+                  Forgot password?
+                </Button>
+              </div>
+            )}
 
             <Button
               type="submit"

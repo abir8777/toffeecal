@@ -7,6 +7,7 @@ import Profile from "./pages/Profile";
 import Premium from "./pages/Premium";
 import MealPlan from "./pages/MealPlan";
 import Install from "./pages/Install";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -32,6 +33,7 @@ function AppRoutes() {
       <Route path="/profile" element={<Profile />} />
       <Route path="/premium" element={<Premium />} />
       <Route path="/install" element={<Install />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
