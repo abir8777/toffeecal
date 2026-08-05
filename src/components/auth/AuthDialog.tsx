@@ -517,19 +517,9 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
                 } else if (result.redirected) {
                   return; // browser will redirect
                 } else {
-                  // Preview runs inside an iframe and receives OAuth tokens via
-                  // postMessage. Persist and validate that session explicitly;
-                  // the full-page published flow hydrates it during redirect.
-                  const { error: sessionError } = await supabase.auth.setSession(result.tokens);
-                  if (sessionError) {
-                    toast({
-                      title: "Google sign in failed",
-                      description: sessionError.message,
-                      variant: "destructive",
-                    });
-                    return;
-                  }
-
+                  // The generated Lovable auth integration has already persisted
+                  // these tokens. Calling setSession again can rotate the same
+                  // refresh token twice and lose the preview iframe session.
                   const { data: userData, error: userError } = await supabase.auth.getUser();
                   if (userError || !userData.user) {
                     toast({
