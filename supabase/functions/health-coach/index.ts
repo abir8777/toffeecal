@@ -58,7 +58,7 @@ serve(async (req) => {
     }
 
     // Cap image payload size (~4 MB base64) to prevent resource exhaustion / cost abuse.
-    if (imageBase64 && typeof imageBase64 === "string" && imageBase64.length > 4 * 1024 * 1024) {
+    if (imageBase64 && typeof imageBase64 === "string" && imageBase64.length > 6 * 1024 * 1024) {
       return jsonResponse({ error: "Image too large (max ~3 MB)" }, 400);
     }
 
@@ -73,7 +73,7 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       console.error("LOVABLE_API_KEY is not configured");
-      return jsonResponse({ message: gatewayFallback(mode), fallback: true, reason: "missing_ai_key" });
+      return jsonResponse({ error: "AI is not configured on the server" }, 500);
     }
 
     // Fetch minimal user context in parallel (skip food logs & water for speed)
@@ -97,9 +97,11 @@ serve(async (req) => {
       ? `User: ${profile.name || "?"}, ${profile.age || "?"}y ${profile.gender || ""}, ${profile.height_cm || "?"}cm ${profile.weight_kg || "?"}kg, ${profile.activity_level || "?"} activity, goal: ${profile.goal?.replace("_", " ") || "?"}, calorie target: ${profile.daily_calorie_target || "?"}kcal, water today: ${totalWater}/${profile.daily_water_goal_ml || 2500}ml.`
       : "";
 
-    const coachPrompt = `You are "Coach", a friendly health & fitness coach. Give concise, actionable, encouraging advice (2-3 short paragraphs max). Knowledgeable on Indian cuisine. Never diagnose or prescribe; for medical issues recommend a doctor. ${userContext}`;
+    const langRule = `LANGUAGE: Detect the user's language and script, including Romanized Hindi/Hinglish or Bengali-English (e.g. "Mare sare finger me asya Hua ha"). Reply in the same language and script the user wrote in, using simple clear words; if unsure, reply in clear simple English. Always directly address the specific issue described.`;
 
-    const doctorPrompt = `You are "Doc", an AI health assistant. Be evidence-based, calm, concise. Use hedging ("could be", "may indicate"). Never diagnose with certainty or prescribe meds. For emergencies (chest pain, breathing issues, severe injury) urge immediate care. For images: brief observation → 2-3 possible causes → what to do now → when to see a doctor. Always remind to consult a professional. ${userContext}`;
+    const coachPrompt = `You are "Coach", an encouraging, certified fitness and nutrition coach. When a user uploads food, physique photos, or exercise questions, analyze the visual input (e.g., estimate meal ingredients, portion sizes, calories and macronutrients, or posture) and provide actionable, motivating guidance tailored to their health, diet, and training goals. Keep it concise (short paragraphs or bullets). Knowledgeable on Indian cuisine. Never diagnose medical conditions; refer medical issues to a doctor. ${langRule} ${userContext}`;
+
+    const doctorPrompt = `You are "Doc", an empathetic, knowledgeable health assistant. When a user provides symptoms and/or images (like skin issues, rashes, or injuries), analyze the image carefully. Describe what visible characteristics you observe, list potential general causes, suggest safe initial home care / soothing practices, and ask relevant follow-up questions (duration, pain level, spread). Never state a diagnosis with certainty or prescribe medication. For emergencies (chest pain, breathing trouble, severe injury, heavy bleeding) urge immediate medical care. Always end with a clear medical disclaimer that you are an AI assistant and the user should consult a qualified doctor or dermatologist for a formal diagnosis and prescription. ${langRule} ${userContext}`;
 
     const systemPrompt = isCoach ? coachPrompt : doctorPrompt;
 
@@ -154,11 +156,11 @@ serve(async (req) => {
       });
 
     // Try the preferred fast model first, then a lighter backup for text requests.
-    const models = imageBase64
-      ? ["google/gemini-2.5-flash"]
-      : ["google/gemini-3-flash-preview", "google/gemini-2.5-flash-lite"];
+    // Both models support vision (image + text input).
+    const models = ["google/gemini-3-flash-preview", "google/gemini-2.5-flash"];
 
     let response: Response | null = null;
+    let lastError: { status: number; body: string } | null = null;
     for (const model of models) {
       try {
         response = await callAi(model);
@@ -173,7 +175,11 @@ serve(async (req) => {
       const errText = await response.text().catch(() => "");
       console.error("AI gateway model error", { model, status, body: errText });
 
-      if (status === 429 || status === 402 || status < 500) break;
+      if (status === 429 || status === 402 || status === 403 || status < 500) {
+        lastError = { status, body: errText };
+        break;
+      }
+      lastError = { status, body: errText };
     }
 
     if (!response || !response.ok || !response.body) {
@@ -185,11 +191,9 @@ serve(async (req) => {
         return jsonResponse({ error: "AI credits exhausted. Please add credits to continue." }, 402);
       }
 
-      if (status >= 500 || !response?.body) {
-        return jsonResponse({ message: fallbackReply, fallback: true, reason: "ai_service_unavailable" });
-      }
-
-      return jsonResponse({ message: fallbackReply, fallback: true, reason: "ai_response_unavailable" });
+      let detail = "";
+      try { detail = JSON.parse(lastError?.body || "{}")?.error?.message || ""; } catch { detail = (lastError?.body || "").slice(0, 300); }
+      return jsonResponse({ error: `AI service error${detail ? `: ${detail}` : ""}`, status }, status >= 400 ? status : 502);
     }
 
     // Stream SSE directly back to the client
@@ -198,6 +202,7 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error("health-coach error:", error);
-    return jsonResponse({ message: gatewayFallback(requestMode), fallback: true, reason: "function_error" });
+    const msg = error instanceof Error ? error.message : String(error);
+    return jsonResponse({ error: `Server error: ${msg}` }, 500);
   }
 });
