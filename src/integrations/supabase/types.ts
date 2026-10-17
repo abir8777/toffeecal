@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_logs: {
+        Row: {
+          activity: string
+          calories_burned: number
+          created_at: string
+          id: string
+          logged_at: string
+          source: string
+          steps: number
+          user_id: string
+        }
+        Insert: {
+          activity?: string
+          calories_burned?: number
+          created_at?: string
+          id?: string
+          logged_at?: string
+          source?: string
+          steps?: number
+          user_id: string
+        }
+        Update: {
+          activity?: string
+          calories_burned?: number
+          created_at?: string
+          id?: string
+          logged_at?: string
+          source?: string
+          steps?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       food_logs: {
         Row: {
           ai_suggestions: string | null
