@@ -79,18 +79,19 @@ export function useHealthCoach() {
 
       if (!resp.ok || !resp.body) {
         let errMsg = 'Failed to get response';
+        let raw = '';
+        try { raw = await resp.text(); } catch { /* ignore */ }
+        console.error(`[health-coach] HTTP ${resp.status}:`, raw);
         try {
-          const j = await resp.json();
-          if (j.fallback && j.message) {
-            setMessages((prev) => [
-              ...prev,
-              { id: `fallback-${Date.now()}`, role: 'assistant', content: j.message, timestamp: new Date() },
-            ]);
-            return;
-          }
+          const j = JSON.parse(raw);
           errMsg = j.error || j.message || errMsg;
         } catch { /* ignore */ }
-        throw new Error(errMsg);
+        // Show the server's real message to the user instead of a generic fallback
+        setMessages((prev) => [
+          ...prev,
+          { id: `error-${Date.now()}`, role: 'assistant', content: `⚠️ ${errMsg} (code ${resp.status})`, timestamp: new Date() },
+        ]);
+        return;
       }
 
       // If the server returned JSON instead of a stream, render safe fallbacks and only throw real errors
