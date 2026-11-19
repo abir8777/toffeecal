@@ -8,6 +8,13 @@
       "when": 1792264534033,
       "tag": "0000_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795108842753,
+      "tag": "0001_create_doctor_health_events",
+      "breakpoints": true
     }
   ]
 }

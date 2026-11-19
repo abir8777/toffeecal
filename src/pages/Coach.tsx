@@ -9,6 +9,8 @@ import { useHealthCoach } from '@/hooks/useHealthCoach';
 import { useCoachMode } from '@/contexts/CoachModeContext';
 import { useActivityLogs } from '@/hooks/useActivityLogs';
 import { WeeklyProgress } from '@/components/chat/WeeklyProgress';
+import { useDoctorHealthLogs } from '@/hooks/useDoctorHealthLogs';
+import { WeeklyHealthProgress } from '@/components/chat/WeeklyHealthProgress';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -57,10 +59,16 @@ export default function Coach() {
   const { setMode: setGlobalMode } = useCoachMode();
   const [authOpen, setAuthOpen] = useState(false);
   const { week, extractFrom } = useActivityLogs(user?.id);
+  const doctorHealth = useDoctorHealthLogs(user?.id);
 
   const handleSend = (text: string, image?: string) => {
     sendMessage(text, image);
     if (mode === 'coach') extractFrom(text, image);
+    if (mode === 'doctor') {
+      const latestAssistant = [...messages].reverse().find((message) => message.role === 'assistant');
+      const latestAssistantMessage = latestAssistant?.id === 'welcome' ? '' : latestAssistant?.content ?? '';
+      void doctorHealth.recordMessage(text, Boolean(image), latestAssistantMessage);
+    }
   };
 
   const handleSwitchMode = (m: ChatMode) => {
@@ -89,6 +97,7 @@ export default function Coach() {
       <div className="h-[calc(100vh-6rem)] flex flex-col">
         <ModeToggle mode={mode} onChange={handleSwitchMode} />
         {mode === 'coach' && <WeeklyProgress week={week} />}
+        {mode === 'doctor' && <WeeklyHealthProgress {...doctorHealth} />}
         <AnimatePresence mode="wait">
           <motion.div
             key={mode}

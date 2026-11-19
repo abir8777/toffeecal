@@ -47,6 +47,27 @@ export type Database = {
         }
         Relationships: []
       }
+      doctor_health_events: {
+        Row: {
+          event_type: string
+          id: string
+          logged_at: string
+          user_id: string
+        }
+        Insert: {
+          event_type: string
+          id?: string
+          logged_at?: string
+          user_id: string
+        }
+        Update: {
+          event_type?: string
+          id?: string
+          logged_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       food_logs: {
         Row: {
           ai_suggestions: string | null
